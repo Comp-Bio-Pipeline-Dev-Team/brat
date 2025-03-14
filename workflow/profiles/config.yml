@@ -1,0 +1,24 @@
+## workflow profile
+## specifies resources for certain rules (workflow specific)
+## set via --workflow-profile flag in snakemake command
+
+default-resources:
+    slurm_partition: "amilan"
+    slurm_account: "amc-general"
+    slurm_extra: "'--qos=normal --mail-type=FAIL,END --mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+    
+##constraint: ## sets specific hardwear or software constraints 
+
+slurm-logdir: "/home/$USER/slurm_logs"
+
+## to define resources for a specific rule 
+set-resources:
+    run_pretrimming_fastqc:
+        runtime: "2h" 
+        mem_mb_per_cpu: 5000
+        ntasks: 6
+        slurm_extra: "'--job-name=fastqc'"
+
+# parallelization with threads needs to be defined separately:
+set-threads:
+    run_pretrimming_fastqc: 6

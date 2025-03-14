@@ -1,0 +1,29 @@
+conda: "envs/global.yml"
+
+RAW_SEQ_IN = 
+
+## singularities (preferred)
+FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
+
+rule all:
+    input:
+        "bulk_RNAseq_out/pretrimming_fastqc/"
+
+
+rule run_pretrimming_fastqc:
+    input:
+        inDir = RAW_SEQ_IN
+    output:
+        outDir = directory("bulk_RNAseq_out/pretrimming_fastqc/")
+    singularity:
+        FASTQC_SING
+    resources:
+        threads = 6
+    shell:
+        """
+        echo "running fastqc"
+
+        mkdir {output.outDir}
+
+        fastqc {input.inDir}/*.fastq.gz -o {output.outDir} --threads {resources.threads}
+        """
