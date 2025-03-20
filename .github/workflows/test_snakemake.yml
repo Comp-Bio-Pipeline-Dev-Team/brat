@@ -1,10 +1,14 @@
 name: testing snakemake in github actions
 run-name: ${{ github.actor }} is praying that this works
-on: [push]
+on:
+  push:
+    branches:
+      - 'dev_MA'
 jobs:
   test-snakemake:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: build my own snakemake .yml 
         shell: bash -el {0}
         run: |
@@ -39,14 +43,13 @@ jobs:
           sudo apt install -y apptainer
 
       - name: where tf am i 
-        shell: bash -el {0}
         run: |
           ls ${{ github.workspace }}
       
-      ##- name: run snakemake with fastqc container
-        ##shell: bash -el {0}
-        ##run: |
-          ##snakemake -s .test/workflow/snakefile --cores 1 --use-singularity
+      - name: run snakemake with fastqc container
+        shell: bash -el {0}
+        run: |
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --use-singularity
 
 
       ##- name: run snakemake in fastqc docker container
