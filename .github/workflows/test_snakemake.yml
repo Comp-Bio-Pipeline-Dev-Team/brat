@@ -1,0 +1,23 @@
+name: testing snakemake in github actions
+run-name: ${{ github.actor }} is praying that this works
+on: [push]
+jobs:
+  test-snakemake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: snakemake
+        uses: snakemake/snakemake-github-action@v2.0.0
+
+      - name: run snakemake in fastqc docker container
+        uses: snakemake/snakemake-github-action@v2.0.0
+        with:
+          directory: '.test'
+          snakefile: 'workflow/snakefile'
+          args: '--cores 1 --use-singularity --dry-run'
+
+      - name: run snakemake with fastqc conda environment
+        uses: snakemake/snakemake-github-action@v2.0.0
+        with:
+          directory: '.test'
+          snakefile: 'workflow/snakefile'
+          args: '--cores 1 --use-conda --dry-run'

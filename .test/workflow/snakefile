@@ -1,0 +1,32 @@
+conda: "envs/global.yml" 
+
+## singularities (preferred)
+FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
+FASTQC_CONDA = "envs/fastqc_env.yml"
+
+rule all:
+    input:
+        "give_me_fastqc_version.txt"
+
+
+rule run_pretrimming_fastqc:
+    input:
+        in_file = "empty_file.txt"
+    output:
+        out_file = "give_me_fastqc_version.txt"
+    singularity:
+        FASTQC_SING
+    conda:
+        FASTQC_CONDA
+    shell:
+        """
+        echo "creating empty file!"
+        touch {input.in_file}
+
+        echo "running fastqc"
+        fastqc --version >> {input.in_file}
+
+        mv {input.in_file} {output.out_file}
+
+        echo "obtained fastqc version!"
+        """
