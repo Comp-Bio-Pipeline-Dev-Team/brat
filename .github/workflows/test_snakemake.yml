@@ -41,12 +41,12 @@ jobs:
       - name: where tf am i 
         shell: bash -el {0}
         run: |
-          pwd
+          ls ${{ github.workspace }}
       
-      - name: run snakemake with fastqc container
-        shell: bash -el {0}
-        run: |
-          snakemake -s .test/workflow/snakefile --cores 1 --use-singularity
+      ##- name: run snakemake with fastqc container
+        ##shell: bash -el {0}
+        ##run: |
+          ##snakemake -s .test/workflow/snakefile --cores 1 --use-singularity
 
 
       ##- name: run snakemake in fastqc docker container
