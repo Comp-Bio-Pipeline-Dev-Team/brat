@@ -5,16 +5,16 @@ jobs:
   test-snakemake:
     runs-on: ubuntu-latest
     steps:
-      ##- name: snakemake
-        ##uses: snakemake/snakemake-github-action@v2.0.0
       - name: run snakemake in fastqc docker container
         uses: snakemake/snakemake-github-action@v2.0.0
         with:
           snakefile: '.test/workflow/snakefile'
-          args: '--cores 1 --use-singularity --dry-run'
+          args: '-s .test/workflow/snakefile --cores 1 --use-singularity'
+          install-apptainer: true
+          snakemake-version: 8.27.1
 
-      - name: run snakemake with fastqc conda environment
-        uses: snakemake/snakemake-github-action@v2.0.0
-        with:
-          snakefile: '.test/workflow/snakefile'
-          args: '--cores 1 --use-conda --dry-run'
+      ##- name: run snakemake with fastqc conda environment
+        ##uses: snakemake/snakemake-github-action@v2.0.0
+        ##with:
+          ##snakefile: '.test/workflow/snakefile'
+          ##args: '--cores 1 --use-conda'
