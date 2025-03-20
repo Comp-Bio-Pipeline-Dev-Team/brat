@@ -12,12 +12,12 @@ jobs:
         uses: snakemake/snakemake-github-action@v2.0.0
         with:
           directory: '.test'
-          snakefile: 'workflow/snakefile'
+          snakefile: 'workflow/Snakefile'
           args: '--cores 1 --use-singularity --dry-run'
 
       - name: run snakemake with fastqc conda environment
         uses: snakemake/snakemake-github-action@v2.0.0
         with:
           directory: '.test'
-          snakefile: 'workflow/snakefile'
+          snakefile: 'workflow/Snakefile'
           args: '--cores 1 --use-conda --dry-run'
