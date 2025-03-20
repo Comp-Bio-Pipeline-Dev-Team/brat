@@ -1,4 +1,4 @@
-conda: "envs/global.yml" 
+## test snakefile for github actions!
 
 ## singularities (preferred)
 FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
