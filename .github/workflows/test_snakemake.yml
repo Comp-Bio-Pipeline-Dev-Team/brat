@@ -10,8 +10,9 @@ jobs:
         with:
           snakefile: '.test/workflow/snakefile'
           args: '-s .test/workflow/snakefile --cores 1 --use-singularity'
-          install-apptainer: true
+          ##install-apptainer: true
           snakemake-version: 8.27.1
+          stagein: 'sudo apt update sudo add-apt-repository -y ppa:apptainer/ppa sudo apt update sudo apt install -y apptainer'
 
       ##- name: run snakemake with fastqc conda environment
         ##uses: snakemake/snakemake-github-action@v2.0.0
