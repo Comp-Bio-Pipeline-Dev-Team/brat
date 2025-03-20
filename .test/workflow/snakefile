@@ -10,8 +10,8 @@ rule all:
 
 
 rule run_pretrimming_fastqc:
-    input:
-        in_file = "empty_file.txt"
+    #input:
+        ##in_file = "empty_file.txt"
     output:
         out_file = "give_me_fastqc_version.txt"
     singularity:
@@ -21,12 +21,10 @@ rule run_pretrimming_fastqc:
     shell:
         """
         echo "creating empty file!"
-        touch {input.in_file}
+        touch {output.out_file}
 
         echo "running fastqc"
-        fastqc --version >> {input.in_file}
-
-        mv {input.in_file} {output.out_file}
+        fastqc --version >> {output.out_file}
 
         echo "obtained fastqc version!"
         """
