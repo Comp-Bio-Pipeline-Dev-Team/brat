@@ -3,6 +3,7 @@
 ## singularities (preferred)
 ## thank god, my container works 
 ## --use-singularity and --software-deployment-method apptainer both work with just singularity defined in the rule!
+## --use-singularity/--software-deployment-method apptainer works with conda environment provided in the rule but not called 
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
 FASTQC_CONDA = "envs/fastqc_env.yml"
 
