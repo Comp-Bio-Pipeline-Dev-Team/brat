@@ -5,6 +5,7 @@
 ## --use-singularity and --software-deployment-method apptainer both work with just singularity defined in the rule!
 ## --use-singularity/--software-deployment-method apptainer works with conda environment provided in the rule but not called 
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
+NO_CONDA_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
 FASTQC_CONDA = "envs/fastqc_env.yml"
 
 rule all:
@@ -16,7 +17,7 @@ rule run_pretrimming_fastqc:
     output:
         out_file = "give_me_fastqc_version.txt"
     singularity:
-        FASTQC_SING
+        NO_CONDA_SING
     conda:
         FASTQC_CONDA
     shell:
