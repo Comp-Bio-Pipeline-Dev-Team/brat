@@ -1,5 +1,5 @@
 name: testing snakemake in github actions
-run-name: trying fastqc container without conda installed
+run-name: multi-platform fastqc container (conda install)
 on:
   push:
     branches:
