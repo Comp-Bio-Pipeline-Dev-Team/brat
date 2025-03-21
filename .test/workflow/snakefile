@@ -1,7 +1,7 @@
 ## test snakefile for github actions!
 
 ## singularities (preferred)
-FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1-amd64"
+FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
 FASTQC_CONDA = "envs/fastqc_env.yml"
 
 rule all:
