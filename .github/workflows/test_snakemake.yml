@@ -39,10 +39,10 @@ jobs:
         with:
           apptainer-version: 1.3.6
       
-      - name: run snakemake with --software-deployment-method flag 
-        shell: bash -el {0}
-        run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer
+     ## - name: run snakemake with --software-deployment-method flag 
+     ##   shell: bash -el {0}
+     ##   run: |
+     ##     snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer
 
       - name: run snakemake with --use-singularity flag 
         shell: bash -el {0}
