@@ -1,8 +1,7 @@
 ## test snakefile for github actions!
-container: "docker://condaforge/miniforge3:latest"
 
 ## singularities (preferred)
-FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
+FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
 FASTQC_CONDA = "envs/fastqc_env.yml"
 
 rule all:
@@ -13,8 +12,8 @@ rule all:
 rule run_pretrimming_fastqc:
     output:
         out_file = "give_me_fastqc_version.txt"
-    conda:
-        FASTQC_CONDA
+    singularity:
+        FASTQC_SING
     shell:
         """
         echo "creating empty file!"

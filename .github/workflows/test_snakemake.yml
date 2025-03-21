@@ -1,5 +1,5 @@
 name: testing snakemake in github actions
-run-name: rollback to snakemake v8.24 - running fastqc conda environment in container 
+run-name: running fastqc container (conda install)
 on:
   push:
     branches:
@@ -41,29 +41,8 @@ jobs:
           sudo add-apt-repository -y ppa:apptainer/ppa
           sudo apt update
           sudo apt install -y apptainer
-
-      - name: where tf am i 
-        run: |
-          ls ${{ github.workspace }}
       
       - name: run snakemake with fastqc container
         shell: bash -el {0}
         run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method conda apptainer
-
-
-      ##- name: run snakemake in fastqc docker container
-        ##uses: snakemake/snakemake-github-action@v2.0.0
-        ##with:
-          ##directory: '.test'
-          ##snakefile: 'workflow/snakefile'
-          ##args: '--cores 1 --use-singularity'
-          ##install-apptainer: true
-          ##snakemake-version: 8.27.1
-          ##stagein: 'sudo apt update sudo add-apt-repository -y ppa:apptainer/ppa sudo apt update sudo apt install -y apptainer'
-
-      ##- name: run snakemake with fastqc conda environment
-        ##uses: snakemake/snakemake-github-action@v2.0.0
-        ##with:
-          ##snakefile: '.test/workflow/snakefile'
-          ##args: '--cores 1 --use-conda'
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --use-singularity
