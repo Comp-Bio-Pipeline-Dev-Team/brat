@@ -34,6 +34,11 @@ jobs:
         shell: bash -el {0}
         run: snakemake --version
 
+      - name: install apptainer (different way)
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.3.6
+
     ##  - name: install apptainer
     ##    shell: bash -el {0}
     ##    run: |
@@ -45,4 +50,4 @@ jobs:
       - name: run snakemake with fastqc container
         shell: bash -el {0}
         run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer --keep-going
