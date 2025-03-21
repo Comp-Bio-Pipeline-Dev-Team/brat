@@ -1,5 +1,5 @@
 name: testing snakemake in github actions
-run-name: running fastqc conda environment
+run-name: running fastqc conda environment in container 
 on:
   push:
     branches:
@@ -49,7 +49,7 @@ jobs:
       - name: run snakemake with fastqc container
         shell: bash -el {0}
         run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --use-conda
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method conda apptainer
 
 
       ##- name: run snakemake in fastqc docker container

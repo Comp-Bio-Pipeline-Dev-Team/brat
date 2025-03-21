@@ -1,4 +1,5 @@
 ## test snakefile for github actions!
+singularity: "docker://condaforge/mambaforge:latest"
 
 ## singularities (preferred)
 FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
@@ -10,12 +11,8 @@ rule all:
 
 
 rule run_pretrimming_fastqc:
-    #input:
-        ##in_file = "empty_file.txt"
     output:
         out_file = "give_me_fastqc_version.txt"
-    singularity:
-        FASTQC_SING
     conda:
         FASTQC_CONDA
     shell:
