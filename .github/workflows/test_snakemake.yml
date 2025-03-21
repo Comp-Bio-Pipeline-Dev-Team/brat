@@ -18,7 +18,7 @@ jobs:
             - bioconda
             - nodefaults
           dependencies:
-            - snakemake==8.24
+            - snakemake==8.27.1
           EOF
 
       - name: setting up miniconda
