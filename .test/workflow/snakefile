@@ -6,9 +6,10 @@
 ## --use-singularity/--software-deployment-method apptainer works with conda environment provided in the rule but not called 
 ## conda needs to be installed in the singularity container for snakemake to run it (snakemake also needs to be installed i think)
 ## my container installs the fastqc conda environment and snakemake which seems to work better
-FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
-##"docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
-##FASTQC_CONDA = "envs/fastqc_env.yml"
+## new notes: 
+CONDA_FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
+FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1" 
+FASTQC_CONDA = "envs/fastqc_env.yml"
 
 rule all:
     input:
@@ -20,6 +21,8 @@ rule run_pretrimming_fastqc:
         out_file = "give_me_fastqc_version.txt"
     singularity:
         FASTQC_SING
+    conda:
+        FASTQC_CONDA
     shell:
         """
         echo "creating empty file!"
