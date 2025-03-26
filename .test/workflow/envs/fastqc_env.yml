@@ -6,6 +6,4 @@ channels:
 dependencies:
   - python>=3.11
   - fastqc=0.12.1
-  - pip
-  - pip:
-    - snakemake==8.27.1
+  - snakemake=8.27.1
