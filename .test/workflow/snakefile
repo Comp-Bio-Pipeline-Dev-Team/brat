@@ -19,10 +19,10 @@ rule all:
 rule run_pretrimming_fastqc:
     output:
         out_file = "give_me_fastqc_version.txt"
-    conda:
-        FASTQC_CONDA
     singularity:
         FASTQC_SING
+    conda:
+        None
     shell:
         """
         echo "creating empty file!"
