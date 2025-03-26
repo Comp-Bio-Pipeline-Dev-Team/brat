@@ -1,5 +1,5 @@
 name: testing snakemake in github actions
-run-name: fastqc container (conda in rule but no flags - conda installed in container but not activated)
+run-name: fastqc container (conda and singularity in rule with flags for both)
 on:
   push:
     branches:
@@ -39,7 +39,7 @@ jobs:
         with:
           apptainer-version: 1.3.6
 
-      - name: run snakemake with --software-deployment-method apptainer flag 
+      - name: run snakemake with --software-deployment-method apptainer conda flag 
         shell: bash -el {0}
         run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer conda
