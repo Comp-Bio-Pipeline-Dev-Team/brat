@@ -19,6 +19,7 @@ jobs:
             - nodefaults
           dependencies:
             - snakemake==8.27.1
+            - apptainer==1.3.6
           EOF
 
       - name: setting up miniconda
@@ -34,12 +35,12 @@ jobs:
         shell: bash -el {0}
         run: snakemake --version
 
-      - name: install apptainer (different way)
-        uses: eWaterCycle/setup-apptainer@v2
-        with:
-          apptainer-version: 1.3.6
+     ## - name: install apptainer (different way)
+     ##   uses: eWaterCycle/setup-apptainer@v2
+     ##   with:
+     ##     apptainer-version: 1.3.6
 
-      - name: run snakemake with --software-deployment-method apptainer conda flag 
+      - name: run snakemake with --software-deployment-method apptainer flag 
         shell: bash -el {0}
         run: |
-          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer conda
+          snakemake -s ${{ github.workspace }}/.test/workflow/snakefile --cores 1 --software-deployment-method apptainer
