@@ -1,29 +1,176 @@
-conda: "envs/global.yml"
+from os.path import join as pj
+from os import environ
+import pandas as pd
+from snake_utils.snake_functions import comb_filepaths, make_fp_dict
 
-RAW_SEQ_IN = 
 
-## singularities (preferred)
-FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1"
+RAW_SEQ_IN =  config['raw_seq_in']
+METADATA = pd.read_csv(config['metadata_file'], sep='\t')
+SAMPLE_LIST = METADATA['sampleid'].tolist()
+MINI_SAMPLE_LIST = 'NA242plus_AUT_S10_L004'
+
+
+sample_fp_dict = make_fp_dict(metadata_df=METADATA,
+                              dataset_dir=RAW_SEQ_IN)
+
+
+## conda environment
+FASTQC_CONDA = "envs/fastqc_env.yml"
+MULTIQC_CONDA = "envs/multiqc_env.yml"
+
+## singularities (preferred) - NEED TO DEBUG THIS ON ALPINE
+FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
+MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.26"
+CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
+
+## functions? to use these as inputs you need to have the function defined in the snakefile which is dumb but whatever
+def pull_rawSeq_fps(wildcards):
+    raw_files = sample_fp_dict[wildcards.sample]
+    return(raw_files)
+
+
+# Set apptainer bindings NOT A PERMANENT SOLUTION
+## idk if this is going to work
+##os.environ["APPTAINER_BIND"] = "/scratch/alpine/mapgar@xsede.org:/scratch/alpine/mapgar@xsede.org"
 
 rule all:
     input:
-        "bulk_RNAseq_out/pretrimming_fastqc/"
+        expand("bulk_RNAseq_out/pretrimming_fastqc/{sample}/",
+               sample=SAMPLE_LIST),
+        "bulk_RNAseq_out/pretrimming_multiqc_report.html",
+        expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.log",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.err",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/posttrimming_fastqc/{sample}/",
+                sample=MINI_SAMPLE_LIST),
+        "bulk_RNAseq_out/posttrimming_multiqc_report.html"
+        
 
-
+##### SUBWORKFLOW ONE!! #####
+## set up to run for all paired samples - in .csv file that tells you what pairs on, read in as a dict of the file names per sample
+## output directory per samples
+## can keep threads=2 and ntasks=1
+##### madis notes: #####
+## both examples under "input:" work to pull both forward/reverse reads in for each sample 
+## could also do this: inFiles = expand(pj(RAW_SEQ_IN, "{{sample}}_{read}.fastq.gz"), read=READS) 
 rule run_pretrimming_fastqc:
     input:
-        inDir = RAW_SEQ_IN
+        inFiles = pull_rawSeq_fps
     output:
-        outDir = directory("bulk_RNAseq_out/pretrimming_fastqc/")
+        outDir = directory("bulk_RNAseq_out/pretrimming_fastqc/{sample}/")
     singularity:
         FASTQC_SING
-    resources:
-        threads = 6
+    conda:
+        FASTQC_CONDA
+    params:
+        threads = 2
     shell:
         """
         echo "running fastqc"
 
         mkdir {output.outDir}
 
-        fastqc {input.inDir}/*.fastq.gz -o {output.outDir} --threads {resources.threads}
+        fastqc {input.inFiles} -o {output.outDir} --threads {params.threads}
         """
+
+
+
+rule run_pretrimming_multiqc:
+    input:
+        ## tells snakemake to wait for all fastqc outputs to be made before starting this rule since all of them are required for this rule
+        inDirs = expand("bulk_RNAseq_out/pretrimming_fastqc/{sample}/",
+                         sample=SAMPLE_LIST)
+    output:
+        outFile = "bulk_RNAseq_out/pretrimming_multiqc_report.html"
+    singularity:
+        MULTIQC_SING
+    conda:
+        MULTIQC_CONDA
+    params:
+        outDir = "bulk_RNAseq_out/",
+        multiqcFilename = "pretrimming_multiqc_report.html"
+    shell:
+        """
+        echo "running multiqc"
+
+        multiqc {input.inDirs} -o {params.outDir} --filename {params.multiqcFilename} .
+        """
+
+## {params.inDir}*/
+
+
+## had to add set +o pipefail; to beginning of totalScores command so that snakemake doesn't detect non-zero error codes and fail
+## (snakemake was detecing 141 error codes for first two steps in pipe bc pipe is so long they complete before later steps do)
+## added '<' to zcat command so its portable to macos, macos prefers gzcat or zcat < but not plain zcat (its dumb)
+## can use to check the error codes of all components of a pipe: echo ${PIPESTATUS[@]}
+## snakemake can insert {params.whatever} inside the double quotes of chemistryFlag variable and its evaluated as the value (30)
+rule run_cutadapt:
+    input:
+        inFiles = pull_rawSeq_fps
+    output:
+        forwardTrimmed = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz",
+        reverseTrimmed = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"
+    singularity:
+        CUTADAPT_SING
+    ##conda:
+    log:
+        log = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.log",
+        error = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.err"
+    params:
+        adapter_threePrime = "AGATCGGAAGAG",
+        qualTrim = 30,
+        minReadLen = 10
+    shell:
+        """
+        totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
+
+        if [ ${{totalScores}} -eq 4 ];
+        then
+            # NovaSeq now bins qc values to 2, 12, 23, 37 (if using NovaSeq), also use --nextseq-trim= instead of -q since NovaSeq is 2 color chemistry
+            echo "Quality scores are binned to 4 values (your score = ${{totalScores}}) therefore, using 2-color chemistry; running --nextseq-trim instead of -q"
+            chemistryFlag="--nextseq-trim={params.qualTrim}"
+        else
+            echo "Quality scores are not binned (your score = ${{totalScores}}), therefore use -q"
+            chemistryFlag="-q {params.qualTrim}"
+        fi
+
+        cutadapt -a {params.adapter_threePrime} \
+                 -A {params.adapter_threePrime} \
+                 "${{chemistryFlag}}" \
+                 --minimum-length={params.minReadLen} \
+                 --pair-filter=any \
+                 -o {output.forwardTrimmed} \
+                 -p {output.reverseTrimmed} \
+                 {input.inFiles[0]} {input.inFiles[1]}>{log.log} \
+                 2>{log.error} 
+        """
+
+## can reuse previous rules this way!
+## can alter the input, output, params, etc directives, anything not defined here will be inherited from the original rule
+## CANNOT alter the execution step (i.e. shell)
+## running fastqc on samples posttrimming via cutadapt
+use rule run_pretrimming_fastqc as run_posttrimming_fastqc with:
+    input:
+        inFiles = ["bulk_RNAseq_out/cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz", "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"]
+    output:
+        outDir = directory("bulk_RNAseq_out/posttrimming_fastqc/{sample}/")
+
+
+## running multiqc on samples posttrimming via cutadapt 
+## if you include a directive to overwrite here (i.e. params), you'll need to specify all arguments underneath it,
+## even if they don't change
+use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
+    input:
+        inDirs = expand("bulk_RNAseq_out/posttrimming_fastqc/{sample}/",
+                        sample=MINI_SAMPLE_LIST)
+    output:
+        outFile = "bulk_RNAseq_out/posttrimming_multiqc_report.html"
+    params:
+        outDir = "bulk_RNAseq_out/",
+        multiqcFilename = "posttrimming_multiqc_report.html"
+

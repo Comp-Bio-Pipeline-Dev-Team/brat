@@ -1,0 +1,6 @@
+## test config file for bulk RNA seq pipeline!
+
+raw_seq_in: 'rp_bulkRNAseq'
+metadata_file: 'metadata.tsv'
+## have for every software except for fastqc and multiqc
+cutadapt_params: '--param1 --param2'
