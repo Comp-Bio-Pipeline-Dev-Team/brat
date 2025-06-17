@@ -1,4 +1,5 @@
 from os.path import join as pj
+from os.path import basename as basefile
 from os import environ
 import pandas as pd
 from snake_utils.snake_functions import comb_filepaths, make_fp_dict
@@ -7,7 +8,17 @@ from snake_utils.snake_functions import comb_filepaths, make_fp_dict
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep='\t')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
-MINI_SAMPLE_LIST = 'NA242plus_AUT_S10_L004'
+MINI_SAMPLE_LIST = 'NA248plus_AUT_S9_L004'
+ALIGN_FASTA = config['align_to_fasta']
+ALIGN_ANNOT = config['align_to_gtf']
+ALIGN_INDEX_NAME = config['align_to_name']
+## to move wanted genome index files into the pipeline's working directory so bind points dont break 
+REF_DIR = "test_refs"
+NEW_FASTA_PATH= pj(REF_DIR, basefile(ALIGN_FASTA))
+NEW_ANNOT_PATH = pj(REF_DIR, basefile(ALIGN_ANNOT))
+
+## for rsem index generation 
+RSEM_INDEX_DIR = pj("reference_indices/rsem", ALIGN_INDEX_NAME)
 
 
 sample_fp_dict = make_fp_dict(metadata_df=METADATA,
@@ -22,6 +33,9 @@ MULTIQC_CONDA = "envs/multiqc_env.yml"
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
 MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.26"
 CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
+STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.10b"
+RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"
+PICARD_SING = "docker://madiapgar/bulk_rna_seq:picard-v2.27.5"
 
 ## functions? to use these as inputs you need to have the function defined in the snakefile which is dumb but whatever
 def pull_rawSeq_fps(wildcards):
@@ -48,7 +62,11 @@ rule all:
                sample=MINI_SAMPLE_LIST),
         expand("bulk_RNAseq_out/posttrimming_fastqc/{sample}/",
                 sample=MINI_SAMPLE_LIST),
-        "bulk_RNAseq_out/posttrimming_multiqc_report.html"
+        "bulk_RNAseq_out/posttrimming_multiqc_report.html",
+        NEW_FASTA_PATH,
+        NEW_ANNOT_PATH,
+        "reference_indices/rsem/",
+        "reference_indices/star/"
         
 
 ##### SUBWORKFLOW ONE!! #####
@@ -124,7 +142,8 @@ rule run_cutadapt:
     params:
         adapter_threePrime = "AGATCGGAAGAG",
         qualTrim = 30,
-        minReadLen = 10
+        minReadLen = 10,
+        n_threads = 2 ## hard coded! - this didn't improve efficiency at all, i think it got downscaled to 1 core by snakemake
     shell:
         """
         totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
@@ -143,6 +162,7 @@ rule run_cutadapt:
                  -A {params.adapter_threePrime} \
                  "${{chemistryFlag}}" \
                  --minimum-length={params.minReadLen} \
+                 -j {params.n_threads} \
                  --pair-filter=any \
                  -o {output.forwardTrimmed} \
                  -p {output.reverseTrimmed} \
@@ -173,4 +193,98 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
     params:
         outDir = "bulk_RNAseq_out/",
         multiqcFilename = "posttrimming_multiqc_report.html"
+
+
+## move input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
+rule move_genome_index:
+    input:
+        fastaFile = ALIGN_FASTA,
+        annotFile = ALIGN_ANNOT
+    output:
+        new_loc_fasta = NEW_FASTA_PATH,
+        new_loc_annot = NEW_ANNOT_PATH
+    params:
+        ref_directory = REF_DIR
+    shell:
+        """
+        mkdir -p {params.ref_directory}
+
+        mv {input.fastaFile} {output.new_loc_fasta}
+        echo "moved genome fasta file to working directory!"
+
+        mv {input.annotFile} {output.new_loc_annot}
+        echo "moved genome annotation file to working directory!"
+        """
+
+
+## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
+## finally works using outside fasta/gtf files with above rule (yay!!)
+rule generate_rsem_index:
+    input:
+        fastaFile = NEW_FASTA_PATH,
+        annotFile = NEW_ANNOT_PATH
+    output:
+        rsem_index = directory("reference_indices/rsem/")
+    singularity:
+        RSEM_SING
+    params:
+        decoy_directory = "reference_indices/rsem/",
+        rsem_index_name = ALIGN_INDEX_NAME
+    shell:
+        """
+        mkdir -p {params.decoy_directory}
+
+        rsem-prepare-reference --gtf {input.annotFile} {input.fastaFile} {params.decoy_directory}{params.rsem_index_name}
+        """
+
+## got errors about bc not being installed in container (it wasnt so thats fine) and out of memory error which was weird 
+## increased memory to check if it does okay 
+## check if read length set to zero or do want to infer? can take user input parameter (greater than 0)
+rule generate_star_index:
+    input:
+        pretrimming_multiqc_report = "bulk_RNAseq_out/pretrimming_multiqc_report_data/multiqc_general_stats.txt",
+        fastaFile = NEW_FASTA_PATH,
+        annotFile = NEW_ANNOT_PATH
+    output:
+        star_index = directory("reference_indices/star/")
+    singularity:
+        STAR_SING
+    params:
+        threads = 10,
+        decoy_directory = "reference_indices/star/",
+        feature_type = "exon"
+    shell:
+        """
+        ## count read lengths in raw seq files for STAR
+        readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
+        overheadLength=$( echo "$((${{readLength}}-1))" )
+        echo "Sequence read length is: ${{overheadLength}}"
+
+        ## calculation of genomeLength - remove headers, remove whitespace and new lines, then count number of characters (bases)
+        genomeLength=$(cat {input.fastaFile} | grep -v "^>" | tr -d [:space:] | wc -m)
+        echo "The length of the provided genome is: ${{genomeLength}} bases"
+
+        ## calculation of genomeSAindex: min(14, log2(GenomeLength)/2 - 1)
+        genome_indexSize=$(printf %.0f $(echo "((l(${{genomeLength}})/l(2))/2)-1" | bc -l))
+        if [[ ${{genome_indexSize}} -ge 14 ]]; then
+            genome_indexSize=14
+        fi
+        echo "Using genome index size of: ${{genome_indexSize}}"
+
+        ## making output directory
+        mkdir -p {params.decoy_directory}
+
+        STAR --runThreadN {params.threads} \
+             --runMode genomeGenerate \
+             --genomeDir {params.decoy_directory} \
+             --genomeFastaFiles {input.fastaFile} \
+             --sjdbGTFfile {input.annotFile} \
+             --sjdbGTFfeatureExon {params.feature_type} \
+             --sjdbOverhang ${{overheadLength}} \
+             --genomeSAindexNbases ${{genome_indexSize}}
+
+        """
+
+
+
 

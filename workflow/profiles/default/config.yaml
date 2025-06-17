@@ -20,28 +20,51 @@ set-resources:
         mem: "1GB"
         ntasks: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/05092025/pretrimming_fastqc_%J.log' '--error=logs/05092025/pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/pretrimming_fastqc_%J.log' '--error=logs/06162025/pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_pretrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
         ntasks: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/05092025/pretrimming_multiqc_%J.log' '--error=logs/05092025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/pretrimming_multiqc_%J.log' '--error=logs/06162025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     run_cutadapt:
         runtime: "2h"
         mem: "5GB"
         ntasks: 2
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/05092025/cutadapt_%J.log' '--error=logs/05092025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/cutadapt_%J.log' '--error=logs/06162025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_fastqc:
         runtime: "1h"
         mem: "1GB"
         ntasks: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/05092025/posttrimming_fastqc_%J.log' '--error=logs/05092025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/posttrimming_fastqc_%J.log' '--error=logs/06162025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
         ntasks: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/05092025/posttrimming_multiqc_%J.log' '--error=logs/05092025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"  
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/posttrimming_multiqc_%J.log' '--error=logs/06162025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+    move_genome_index:
+        runtime: "1h"
+        mem: "1GB"
+        ntasks: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/move_genome_index_%J.log' '--error=logs/06162025/move_genome_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+    generate_rsem_index:
+        runtime: "1h"
+        mem: "5GB"
+        ntasks: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/outside_rsem_index_%J.log' '--error=logs/06162025/outside_rsem_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+    generate_star_index:
+        runtime: "2h"
+        mem: "50GB"
+        ntasks: 10
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/06162025/star_index_%J.log' '--error=logs/06162025/star_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"  
+
+## attempting to alter amount of cores given to rules (running all on 1 core rn)
+set-threads:
+    run_cutadapt: 2
+    generate_star_index: 10

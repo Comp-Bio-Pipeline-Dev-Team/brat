@@ -2,5 +2,8 @@
 
 raw_seq_in: 'rp_bulkRNAseq'
 metadata_file: 'metadata.tsv'
+align_to_fasta: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/hg38.p14.fa'
+align_to_gtf: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/hg38.refGene.gtf'
+align_to_name: 'hg38.p14'
 ## have for every software except for fastqc and multiqc
 cutadapt_params: '--param1 --param2'
