@@ -5,5 +5,7 @@ metadata_file: 'metadata.tsv'
 align_to_fasta: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/hg38.p14.fa'
 align_to_gtf: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/hg38.refGene.gtf'
 align_to_name: 'hg38.p14'
+## default is 0, pipeline will infer actual read length with input of 0, if the input is greater than 0, will use the input value (user determined)
+raw_seq_read_length: 0
 ## have for every software except for fastqc and multiqc
 cutadapt_params: '--param1 --param2'

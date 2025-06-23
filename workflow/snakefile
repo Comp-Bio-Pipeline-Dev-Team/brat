@@ -16,6 +16,7 @@ ALIGN_INDEX_NAME = config['align_to_name']
 REF_DIR = "test_refs"
 NEW_FASTA_PATH= pj(REF_DIR, basefile(ALIGN_FASTA))
 NEW_ANNOT_PATH = pj(REF_DIR, basefile(ALIGN_ANNOT))
+READ_LENGTH = config['raw_seq_read_length']
 
 ## for rsem index generation 
 RSEM_INDEX_DIR = pj("reference_indices/rsem", ALIGN_INDEX_NAME)
@@ -66,7 +67,9 @@ rule all:
         NEW_FASTA_PATH,
         NEW_ANNOT_PATH,
         "reference_indices/rsem/",
-        "reference_indices/star/"
+        "reference_indices/star/",
+        expand("bulk_RNAseq_out/star_alignment/{sample}/",
+               sample=MINI_SAMPLE_LIST)
         
 
 ##### SUBWORKFLOW ONE!! #####
@@ -143,7 +146,7 @@ rule run_cutadapt:
         adapter_threePrime = "AGATCGGAAGAG",
         qualTrim = 30,
         minReadLen = 10,
-        n_threads = 2 ## hard coded! - this didn't improve efficiency at all, i think it got downscaled to 1 core by snakemake
+        n_threads = 4 ## n_threads = cpus_per_task*2
     shell:
         """
         totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
@@ -216,7 +219,7 @@ rule move_genome_index:
         echo "moved genome annotation file to working directory!"
         """
 
-
+## wont want to run this rule unless its needed - config option/looking at star log files for %uniquely_mapped v %percent_multimapped v %unmapped thresholds for when its run
 ## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
 ## finally works using outside fasta/gtf files with above rule (yay!!)
 rule generate_rsem_index:
@@ -238,8 +241,8 @@ rule generate_rsem_index:
         """
 
 ## got errors about bc not being installed in container (it wasnt so thats fine) and out of memory error which was weird 
-## increased memory to check if it does okay 
-## check if read length set to zero or do want to infer? can take user input parameter (greater than 0)
+## increased memory to check if it does okay - needed 50GBs of memory 
+## check if read length set to zero or do want to infer? can take user input parameter (greater than 0) - i cant remember why we were doing this
 rule generate_star_index:
     input:
         pretrimming_multiqc_report = "bulk_RNAseq_out/pretrimming_multiqc_report_data/multiqc_general_stats.txt",
@@ -250,15 +253,22 @@ rule generate_star_index:
     singularity:
         STAR_SING
     params:
-        threads = 10,
+        input_read_length = READ_LENGTH,
+        n_threads = 22, ## n_threads = cpus_per_task*2
         decoy_directory = "reference_indices/star/",
         feature_type = "exon"
     shell:
         """
-        ## count read lengths in raw seq files for STAR
-        readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
-        overheadLength=$( echo "$((${{readLength}}-1))" )
-        echo "Sequence read length is: ${{overheadLength}}"
+        if [ {params.input_read_length} -eq 0 ];
+        then
+            ## count read lengths in raw seq files for STAR
+            readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
+            overheadLength=$( echo "$((${{readLength}}-1))" )
+            echo "Inferred sequence read length is: ${{overheadLength}}"
+        else
+            overheadLength={params.input_read_length}
+            echo "User input sequence read length is: ${{overheadLength}}"
+        fi
 
         ## calculation of genomeLength - remove headers, remove whitespace and new lines, then count number of characters (bases)
         genomeLength=$(cat {input.fastaFile} | grep -v "^>" | tr -d [:space:] | wc -m)
@@ -274,7 +284,7 @@ rule generate_star_index:
         ## making output directory
         mkdir -p {params.decoy_directory}
 
-        STAR --runThreadN {params.threads} \
+        STAR --runThreadN {params.n_threads} \
              --runMode genomeGenerate \
              --genomeDir {params.decoy_directory} \
              --genomeFastaFiles {input.fastaFile} \
@@ -283,6 +293,52 @@ rule generate_star_index:
              --sjdbOverhang ${{overheadLength}} \
              --genomeSAindexNbases ${{genome_indexSize}}
 
+        """
+
+## actual rule for star!!
+## need to actually run this and debug!
+rule run_star_alignment:
+    input:
+        pretrimming_multiqc_report = "bulk_RNAseq_out/pretrimming_multiqc_report_data/multiqc_general_stats.txt",
+        star_genome_index_dir = "reference_indices/star/",
+        forwardTrimmed = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz",
+        reverseTrimmed = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz",
+        annotFile = NEW_ANNOT_PATH
+    output:
+        star_out_dir = directory("bulk_RNAseq_out/star_alignment/{sample}/")
+    singularity:
+        STAR_SING
+    params:
+        input_read_length = READ_LENGTH,
+        n_threads = 28, ## n_threads = cpus_per_task*2
+        star_sample_prefix = "bulk_RNAseq_out/star_alignment/{sample}/{sample}." ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
+    shell:
+        """
+        ## have to redo read length calculation, maybe not the best? but idk what else to do 
+        if [ {params.input_read_length} -eq 0 ];
+        then
+            ## count read lengths in raw seq files for STAR
+            readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
+            overheadLength=$( echo "$((${{readLength}}-1))" )
+            echo "Inferred sequence read length is: ${{overheadLength}}"
+        else
+            overheadLength={params.input_read_length}
+            echo "User input sequence read length is: ${{overheadLength}}"
+        fi 
+
+        mkdir -p {output.star_out_dir}
+
+        STAR --runMode alignReads \
+             --runThreadN {params.n_threads} \
+             --genomeDir {input.star_genome_index_dir} \
+             --readFilesCommand zcat \
+             --sjdbGTFfile {input.annotFile} \
+             --readFilesIn {input.forwardTrimmed} {input.reverseTrimmed} \
+             --outFileNamePrefix {params.star_sample_prefix} \
+             --outSAMtype BAM SortedByCoordinate \
+             --quantMode TranscriptomeSAM GeneCounts \
+             --twopassMode Basic \
+             --sjdbOverhang ${{overheadLength}}
         """
 
 

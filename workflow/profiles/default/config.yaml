@@ -8,63 +8,63 @@ default-resources:
     slurm_account: "amc-general"
 
 
-## put in scratch directory, inside project (create logs/ directory)
-## slurm logs 
-## i dont think this is doing anything so I'm not going to include it
-##slurm-logdir: "logs/snake_slurm_logs"
-
-## to define resources for a specific rule 
+## to define resources for a specific rule:
+## NOTE: using cpus_per_task: instead of ntasks: to request number of cores bc we're calling snakemake from within a slurm job already 
+## so it automatically downscales the requested cores to 1 (this is annoying)
+## in alpine, 1 core = 3.75GB memory (divide memory request by 3.75 to get the correct number of cores to request)
+## currently have threading to be 2*number of cores (hardcoded in snakefile)
 set-resources:
     run_pretrimming_fastqc:
         runtime: "1h"
         mem: "1GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/pretrimming_fastqc_%J.log' '--error=logs/06162025/pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/pretrimming_fastqc_%J.log' '--error=logs/06202025/pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_pretrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/pretrimming_multiqc_%J.log' '--error=logs/06162025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/pretrimming_multiqc_%J.log' '--error=logs/06202025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     run_cutadapt:
         runtime: "2h"
         mem: "5GB"
-        ntasks: 2
+        cpus_per_task: 2
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/cutadapt_%J.log' '--error=logs/06162025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/cutadapt_%J.log' '--error=logs/06202025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_fastqc:
         runtime: "1h"
         mem: "1GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/posttrimming_fastqc_%J.log' '--error=logs/06162025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/posttrimming_fastqc_%J.log' '--error=logs/06202025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/posttrimming_multiqc_%J.log' '--error=logs/06162025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/posttrimming_multiqc_%J.log' '--error=logs/06202025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     move_genome_index:
         runtime: "1h"
         mem: "1GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/move_genome_index_%J.log' '--error=logs/06162025/move_genome_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/move_genome_index_%J.log' '--error=logs/06202025/move_genome_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     generate_rsem_index:
         runtime: "1h"
         mem: "5GB"
-        ntasks: 1
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/outside_rsem_index_%J.log' '--error=logs/06162025/outside_rsem_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/outside_rsem_index_%J.log' '--error=logs/06202025/outside_rsem_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     generate_star_index:
+        runtime: "1h"
+        mem: "45GB"
+        cpus_per_task: 11 ## 45/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/star_index_%J.log' '--error=logs/06202025/star_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+    run_star_alignment:
         runtime: "2h"
         mem: "50GB"
-        ntasks: 10
+        cpus_per_task: 14 ## 50/3.75 = cpus_per_task
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/06162025/star_index_%J.log' '--error=logs/06162025/star_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"  
-
-## attempting to alter amount of cores given to rules (running all on 1 core rn)
-set-threads:
-    run_cutadapt: 2
-    generate_star_index: 10
+        slurm_extra: "'--qos=normal' '--output=logs/06202025/star_alignment_%J.log' '--error=logs/06202025/star_alignment_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
