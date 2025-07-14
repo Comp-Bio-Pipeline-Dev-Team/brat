@@ -1,21 +1,37 @@
 from os.path import join as pj
-from os.path import basename as basefile
+from os.path import basename
 from os import environ
 import pandas as pd
-from snake_utils.snake_functions import comb_filepaths, make_fp_dict
+import re
+import glob
+from snake_utils.snake_functions import comb_filepaths, make_fp_dict, picard_calculate_strandedness
 
 
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep='\t')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
-MINI_SAMPLE_LIST = 'NA248plus_AUT_S9_L004'
+MINI_SAMPLE_LIST = 'NA241plus_AUT_S7_L004'
+
+## user input additional parameters for cutadapt, star, and rsem (optional)
+EXTRA_CUTADAPT_PARAMS = config['cutadapt_params']
+EXTRA_STAR_PARAMS = config['star_params']
+EXTRA_RSEM_PARAMS = config['rsem_params']
+
+## user input genome index files and the name of the index 
 ALIGN_FASTA = config['align_to_fasta']
 ALIGN_ANNOT = config['align_to_gtf']
 ALIGN_INDEX_NAME = config['align_to_name']
-## to move wanted genome index files into the pipeline's working directory so bind points dont break 
-REF_DIR = "test_refs"
-NEW_FASTA_PATH= pj(REF_DIR, basefile(ALIGN_FASTA))
-NEW_ANNOT_PATH = pj(REF_DIR, basefile(ALIGN_ANNOT))
+PICARD_REFFLAT = config['picard_refFlat']
+PICARD_RRNA_INTERVAL = config['picard_rrna_interval_list']
+
+## to move wanted genome index files for star, rsem, and picard into the pipeline's working directory so bind points dont break 
+REF_DIR = "user_reference_files"
+NEW_FASTA_PATH= pj(REF_DIR, basename(ALIGN_FASTA))
+NEW_ANNOT_PATH = pj(REF_DIR, basename(ALIGN_ANNOT))
+NEW_PICARD_REFFLAT = pj(REF_DIR, basename(PICARD_REFFLAT))
+NEW_PICARD_RRNA_INTERVAL = pj(REF_DIR, basename(PICARD_RRNA_INTERVAL))
+PICARD_JAR_FILE = pj(REF_DIR, "picard.jar")
+
 READ_LENGTH = config['raw_seq_read_length']
 
 ## for rsem index generation 
@@ -39,6 +55,13 @@ RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"
 PICARD_SING = "docker://madiapgar/bulk_rna_seq:picard-v2.27.5"
 
 ## functions? to use these as inputs you need to have the function defined in the snakefile which is dumb but whatever
+## added wildcard constraints so my input function would stop breaking, this regex works for the current sampleids but will probs have to
+## alter it in the future
+## regex to only include sample id but not full path: [^/]* (excludes anything with forward slashes in it) - ADD EXCLUDING WHITE SPACE (\s)
+## current regex only selects letters, numbers, and underscores: \\w+
+wildcard_constraints:
+    sample="\\w+"
+
 def pull_rawSeq_fps(wildcards):
     raw_files = sample_fp_dict[wildcards.sample]
     return(raw_files)
@@ -66,10 +89,20 @@ rule all:
         "bulk_RNAseq_out/posttrimming_multiqc_report.html",
         NEW_FASTA_PATH,
         NEW_ANNOT_PATH,
+        NEW_PICARD_RRNA_INTERVAL,
+        NEW_PICARD_REFFLAT,
+        PICARD_JAR_FILE,
         "reference_indices/rsem/",
         "reference_indices/star/",
         expand("bulk_RNAseq_out/star_alignment/{sample}/",
-               sample=MINI_SAMPLE_LIST)
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize.txt",
+               sample=MINI_SAMPLE_LIST),
+        expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf",
+               sample=MINI_SAMPLE_LIST),
+        "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
         
 
 ##### SUBWORKFLOW ONE!! #####
@@ -130,6 +163,7 @@ rule run_pretrimming_multiqc:
 ## added '<' to zcat command so its portable to macos, macos prefers gzcat or zcat < but not plain zcat (its dumb)
 ## can use to check the error codes of all components of a pipe: echo ${PIPESTATUS[@]}
 ## snakemake can insert {params.whatever} inside the double quotes of chemistryFlag variable and its evaluated as the value (30)
+## add {params.user_added_cutadaptParams} to the command!
 rule run_cutadapt:
     input:
         inFiles = pull_rawSeq_fps
@@ -146,7 +180,8 @@ rule run_cutadapt:
         adapter_threePrime = "AGATCGGAAGAG",
         qualTrim = 30,
         minReadLen = 10,
-        n_threads = 4 ## n_threads = cpus_per_task*2
+        n_threads = 4, ## n_threads = cpus_per_task*2
+        user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS
     shell:
         """
         totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
@@ -168,7 +203,7 @@ rule run_cutadapt:
                  -j {params.n_threads} \
                  --pair-filter=any \
                  -o {output.forwardTrimmed} \
-                 -p {output.reverseTrimmed} \
+                 -p {output.reverseTrimmed} {params.user_added_cutadaptParams} \
                  {input.inFiles[0]} {input.inFiles[1]}>{log.log} \
                  2>{log.error} 
         """
@@ -198,26 +233,46 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
         multiqcFilename = "posttrimming_multiqc_report.html"
 
 
+
 ## move input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
-rule move_genome_index:
+rule move_reference_files:
     input:
         fastaFile = ALIGN_FASTA,
-        annotFile = ALIGN_ANNOT
+        annotFile = ALIGN_ANNOT,
+        refFlat = PICARD_REFFLAT,
+        riboIntList = PICARD_RRNA_INTERVAL
     output:
         new_loc_fasta = NEW_FASTA_PATH,
-        new_loc_annot = NEW_ANNOT_PATH
+        new_loc_annot = NEW_ANNOT_PATH,
+        new_refFlat = NEW_PICARD_REFFLAT,
+        new_riboIntList = NEW_PICARD_RRNA_INTERVAL,
+        picard_jar_file = PICARD_JAR_FILE
     params:
         ref_directory = REF_DIR
     shell:
         """
         mkdir -p {params.ref_directory}
 
+        ## rsem and star reference files
         mv {input.fastaFile} {output.new_loc_fasta}
         echo "moved genome fasta file to working directory!"
 
         mv {input.annotFile} {output.new_loc_annot}
         echo "moved genome annotation file to working directory!"
+
+        ## picard reference files
+        mv {input.refFlat} {output.new_refFlat}
+        echo "moved picard refFlat file to working directory!"
+
+        mv {input.riboIntList} {output.new_riboIntList}
+        echo "moved picard rRNA interval list to working directory!"
+
+        cd {params.ref_directory}
+        wget https://github.com/broadinstitute/picard/releases/download/2.27.5/picard.jar
+        echo "downloaded picard jar file!" 
         """
+
+
 
 ## wont want to run this rule unless its needed - config option/looking at star log files for %uniquely_mapped v %percent_multimapped v %unmapped thresholds for when its run
 ## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
@@ -227,17 +282,16 @@ rule generate_rsem_index:
         fastaFile = NEW_FASTA_PATH,
         annotFile = NEW_ANNOT_PATH
     output:
-        rsem_index = directory("reference_indices/rsem/")
+        rsem_index_dir = directory("reference_indices/rsem/")
     singularity:
         RSEM_SING
     params:
-        decoy_directory = "reference_indices/rsem/",
         rsem_index_name = ALIGN_INDEX_NAME
     shell:
         """
-        mkdir -p {params.decoy_directory}
+        mkdir -p {output.rsem_index_dir}
 
-        rsem-prepare-reference --gtf {input.annotFile} {input.fastaFile} {params.decoy_directory}{params.rsem_index_name}
+        rsem-prepare-reference --gtf {input.annotFile} {input.fastaFile} {output.rsem_index_dir}/{params.rsem_index_name}
         """
 
 ## got errors about bc not being installed in container (it wasnt so thats fine) and out of memory error which was weird 
@@ -249,13 +303,12 @@ rule generate_star_index:
         fastaFile = NEW_FASTA_PATH,
         annotFile = NEW_ANNOT_PATH
     output:
-        star_index = directory("reference_indices/star/")
+        star_index_dir = directory("reference_indices/star/")
     singularity:
         STAR_SING
     params:
         input_read_length = READ_LENGTH,
         n_threads = 22, ## n_threads = cpus_per_task*2
-        decoy_directory = "reference_indices/star/",
         feature_type = "exon"
     shell:
         """
@@ -282,11 +335,11 @@ rule generate_star_index:
         echo "Using genome index size of: ${{genome_indexSize}}"
 
         ## making output directory
-        mkdir -p {params.decoy_directory}
+        mkdir -p {output.star_index_dir}
 
         STAR --runThreadN {params.n_threads} \
              --runMode genomeGenerate \
-             --genomeDir {params.decoy_directory} \
+             --genomeDir {output.star_index_dir} \
              --genomeFastaFiles {input.fastaFile} \
              --sjdbGTFfile {input.annotFile} \
              --sjdbGTFfeatureExon {params.feature_type} \
@@ -296,7 +349,6 @@ rule generate_star_index:
         """
 
 ## actual rule for star!!
-## need to actually run this and debug!
 rule run_star_alignment:
     input:
         pretrimming_multiqc_report = "bulk_RNAseq_out/pretrimming_multiqc_report_data/multiqc_general_stats.txt",
@@ -305,13 +357,15 @@ rule run_star_alignment:
         reverseTrimmed = "bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz",
         annotFile = NEW_ANNOT_PATH
     output:
-        star_out_dir = directory("bulk_RNAseq_out/star_alignment/{sample}/")
+        star_out_dir = directory("bulk_RNAseq_out/star_alignment/{sample}/"),
+        star_out_file = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam"
     singularity:
         STAR_SING
     params:
         input_read_length = READ_LENGTH,
-        n_threads = 28, ## n_threads = cpus_per_task*2
-        star_sample_prefix = "bulk_RNAseq_out/star_alignment/{sample}/{sample}." ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
+        n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
+        star_sample_prefix = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.", ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
+        user_added_starParams = EXTRA_STAR_PARAMS
     shell:
         """
         ## have to redo read length calculation, maybe not the best? but idk what else to do 
@@ -338,9 +392,90 @@ rule run_star_alignment:
              --outSAMtype BAM SortedByCoordinate \
              --quantMode TranscriptomeSAM GeneCounts \
              --twopassMode Basic \
-             --sjdbOverhang ${{overheadLength}}
+             --sjdbOverhang ${{overheadLength}} {params.user_added_starParams}
+        """
+
+
+## rule for picard collect rna seq metrics!
+## this works
+## picard.jar file needs to be local, NOT in the container, probs will download it in the move_reference_files rule or have it prewrapped in the pipeline
+rule run_picard_collect_rna_seq:
+    input:
+        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam",
+        refFlat_file = NEW_PICARD_REFFLAT,
+        riboIntList_file = NEW_PICARD_RRNA_INTERVAL
+    output:
+        collect_rnaSeq_file = "bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt"
+    singularity:
+        PICARD_SING
+    params:
+        sample_out_dir = "bulk_RNAseq_out/picard/{sample}/",
+        jar_file = PICARD_JAR_FILE, ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
+        strandedness = "NONE"
+    shell:
+        """
+        mkdir -p {params.sample_out_dir}
+
+        java -jar {params.jar_file} CollectRnaSeqMetrics \
+             I={input.alignedBam} \
+             O={output.collect_rnaSeq_file} \
+             REF_FLAT={input.refFlat_file} \
+             STRAND={params.strandedness} \
+             RIBOSOMAL_INTERVALS={input.riboIntList_file}
         """
 
 
 
+## rule for picard collect insert size metrics !
+## this works
+rule run_picard_collect_insert_size:
+    input:
+        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam"
+    output:
+        insertSize_file = "bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize.txt",
+        insertSize_histogram = "bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf"
+    singularity:
+        PICARD_SING
+    params:
+        sample_out_dir = "bulk_RNAseq_out/picard/{sample}/",
+        jar_file = PICARD_JAR_FILE
+    shell:
+        """
+        # check if outDir exists; if it doesn't it will make the output directory
+        ## idk if i need to do this or not 
+        if [ -d {params.sample_out_dir} ];
+        then
+            echo "Directory {params.sample_out_dir} exists. Proceeding with analysis."
+        else
+            echo "Directory {params.sample_out_dir} does not exist. Generating directory..."
+            mkdir -p {params.sample_out_dir}
+        fi
 
+        java -jar {params.jar_file} CollectInsertSizeMetrics \
+             I={input.alignedBam} \
+             O={output.insertSize_file} \
+             H={output.insertSize_histogram}
+        """
+
+
+## need a script here to calculate strandedness from picard collect rna seq metrics output BEFORE rsem!!
+## write python function and put it in snake_functions.py to reference here 
+## add automated strand interpretation column in picard collect rna seq metrics table (sanity checking)
+## all picard for all samples should complete before we put them all into rule to wrangle picard results into same df and save as .csv
+## use run: instead of shell: 
+## do I need to import needed libraries in the run directive or will it be okay? - it wil be okay 
+rule calculate_strandedness:
+    input:
+        collect_rnaSeq_files = expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt",
+                                      sample=MINI_SAMPLE_LIST)
+    output:
+        allSample_picard_strandedness = "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
+    params:
+        picard_metrics_pattern = "bulk_RNAseq_out/picard/*/*.picard.metrics.txt"
+    run:
+        picard_calculate_strandedness(file_pattern=params.picard_metrics_pattern,
+                                      out_file=output.allSample_picard_strandedness)
+
+
+
+## rsem 
