@@ -18,70 +18,76 @@ set-resources:
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/pretrimming_fastqc_%J.log' '--error=logs/07112025pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/pretrimming_fastqc_%J.log' '--error=logs/07172025/pretrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_pretrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/pretrimming_multiqc_%J.log' '--error=logs/07112025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/pretrimming_multiqc_%J.log' '--error=logs/07172025/pretrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     run_cutadapt:
         runtime: "2h"
         mem: "5GB"
         cpus_per_task: 2
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/cutadapt_%J.log' '--error=logs/07112025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/cutadapt_%J.log' '--error=logs/07172025/cutadapt_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_fastqc:
         runtime: "1h"
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/posttrimming_fastqc_%J.log' '--error=logs/07112025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/posttrimming_fastqc_%J.log' '--error=logs/07172025/posttrimming_fastqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_posttrimming_multiqc:
         runtime: "1h"
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/posttrimming_multiqc_%J.log' '--error=logs/07112025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/posttrimming_multiqc_%J.log' '--error=logs/07172025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     move_reference_files:
         runtime: "1h"
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/move_reference_files_%J.log' '--error=logs/07112025/move_reference_files_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/move_reference_files_%J.log' '--error=logs/07172025/move_reference_files_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     generate_rsem_index:
         runtime: "1h"
         mem: "3.75GB" ## might need to bump this a little for comprehensive genome
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/outside_rsem_index_%J.log' '--error=logs/07112025/outside_rsem_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/outside_rsem_index_%J.log' '--error=logs/07172025/outside_rsem_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     generate_star_index:
         runtime: "2h"
         mem: "50GB" ## bump up to 50GB for comprehensive genome index generation!
         cpus_per_task: 14 ## 50/3.75 = cpus_per_task
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/star_index_%J.log' '--error=logs/07112025/star_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/star_index_%J.log' '--error=logs/07172025/star_index_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_star_alignment:
         runtime: "10h"
         mem: "50GB"
         cpus_per_task: 14 ## 50/3.75 = cpus_per_task
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/star_alignment_%J.log' '--error=logs/07112025/star_alignment_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/star_alignment_%J.log' '--error=logs/07172025/star_alignment_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_picard_collect_rna_seq:
-        runtime: "10h" ## may have to change eventually but first figure out how long it runs for 
+        runtime: "2h" ## may have to change eventually but first figure out how long it runs for 
         mem: "10GB" ## got out of memory error so upping memory to 10GB to see how much it takes
         cpus_per_task: 3 ## 10/3.75 = cpus_per_task
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/picard_collectRNAseq_%J.log' '--error=logs/07112025/picard_collectRNAseq_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/picard_collectRNAseq_%J.log' '--error=logs/07172025/picard_collectRNAseq_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     run_picard_collect_insert_size:
         runtime: "1h" ## ran for 5 mins
         mem: "5GB"  ## took less than 3GB of memory, maybe leave it at 5?
         cpus_per_task: 2 ## 5/3.75 = cpus_per_task
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output='logs/$(date +%m%d%Y)/picard_collectInsertSize_%J.log'' '--error='logs/$(date +%m%d%Y)/picard_collectInsertSize_%J.err'' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/picard_collectInsertSize_%J.log' '--error=logs/07172025/picard_collectInsertSize_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
     calculate_strandedness:
         runtime: 30 ## ran for 5 mins
-        mem: "5GB"  ## took less than 3GB of memory, maybe leave it at 5?
-        cpus_per_task: 2 ## 5/3.75 = cpus_per_task
+        mem: "1GB"  ## decreased to 1GB bc took less memory than that 
+        cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07112025/calculate_strandedness_%J.log' '--error='logs/07112025/calculate_strandedness_%J.err'' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/calculate_strandedness_%J.log' '--error='logs/07172025/calculate_strandedness_%J.err'' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
+    run_rsem_quantification:
+        runtime: "2h" ## over-estimation but its okay
+        mem: "10GB"  ## decrease to 10 bc only used 2GB
+        cpus_per_task: 3 ## 10/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/07172025/rsem_quantification_%J.log' '--error='logs/07172025/rsem_quantification_%J.err'' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"

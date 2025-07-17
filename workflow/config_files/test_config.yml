@@ -13,4 +13,4 @@ picard_rrna_interval_list: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_ref
 cutadapt_params: ''
 ## use --sjdbGTFtagExonParentGene gene_name flag when using gencode comprehensive genomes!
 star_params: '--outSAMunmapped Within KeepPairs --outReadsUnmapped Fastx --outFilterScoreMinOverLread 0.20 --outFilterMatchNminOverLread 0.20'
-rsem_params: ''
+rsem_params: ' '

@@ -30,7 +30,6 @@ NEW_FASTA_PATH= pj(REF_DIR, basename(ALIGN_FASTA))
 NEW_ANNOT_PATH = pj(REF_DIR, basename(ALIGN_ANNOT))
 NEW_PICARD_REFFLAT = pj(REF_DIR, basename(PICARD_REFFLAT))
 NEW_PICARD_RRNA_INTERVAL = pj(REF_DIR, basename(PICARD_RRNA_INTERVAL))
-PICARD_JAR_FILE = pj(REF_DIR, "picard.jar")
 
 READ_LENGTH = config['raw_seq_read_length']
 
@@ -91,7 +90,6 @@ rule all:
         NEW_ANNOT_PATH,
         NEW_PICARD_RRNA_INTERVAL,
         NEW_PICARD_REFFLAT,
-        PICARD_JAR_FILE,
         "reference_indices/rsem/",
         "reference_indices/star/",
         expand("bulk_RNAseq_out/star_alignment/{sample}/",
@@ -102,7 +100,9 @@ rule all:
                sample=MINI_SAMPLE_LIST),
         expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf",
                sample=MINI_SAMPLE_LIST),
-        "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
+        "bulk_RNAseq_out/picard/allSample_picard_metrics.csv",
+        expand("bulk_RNAseq_out/rsem_quantification/{sample}/",
+               sample=MINI_SAMPLE_LIST)
         
 
 ##### SUBWORKFLOW ONE!! #####
@@ -245,8 +245,7 @@ rule move_reference_files:
         new_loc_fasta = NEW_FASTA_PATH,
         new_loc_annot = NEW_ANNOT_PATH,
         new_refFlat = NEW_PICARD_REFFLAT,
-        new_riboIntList = NEW_PICARD_RRNA_INTERVAL,
-        picard_jar_file = PICARD_JAR_FILE
+        new_riboIntList = NEW_PICARD_RRNA_INTERVAL
     params:
         ref_directory = REF_DIR
     shell:
@@ -266,10 +265,6 @@ rule move_reference_files:
 
         mv {input.riboIntList} {output.new_riboIntList}
         echo "moved picard rRNA interval list to working directory!"
-
-        cd {params.ref_directory}
-        wget https://github.com/broadinstitute/picard/releases/download/2.27.5/picard.jar
-        echo "downloaded picard jar file!" 
         """
 
 
@@ -410,7 +405,7 @@ rule run_picard_collect_rna_seq:
         PICARD_SING
     params:
         sample_out_dir = "bulk_RNAseq_out/picard/{sample}/",
-        jar_file = PICARD_JAR_FILE, ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
+        jar_file = "/opt/picard-2.27.5/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
         strandedness = "NONE"
     shell:
         """
@@ -438,7 +433,7 @@ rule run_picard_collect_insert_size:
         PICARD_SING
     params:
         sample_out_dir = "bulk_RNAseq_out/picard/{sample}/",
-        jar_file = PICARD_JAR_FILE
+        jar_file = "/opt/picard-2.27.5/picard.jar" ## this is in the container!!
     shell:
         """
         # check if outDir exists; if it doesn't it will make the output directory
@@ -479,3 +474,37 @@ rule calculate_strandedness:
 
 
 ## rsem 
+## need to include the genome name prefix for the rsem index files or else it loses its mind
+## have to also provide the file prefix with the output directory path (I forgot this)
+rule run_rsem_quantification:
+    input:
+        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam",
+        rsem_index_dir = "reference_indices/rsem/",
+        picard_metrics_file = "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
+    output:
+        rsem_out_dir = directory("bulk_RNAseq_out/rsem_quantification/{sample}/")
+    singularity:
+        RSEM_SING
+    params:
+        nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
+        current_sample = lambda wc: wc.get("sample"),
+        rsem_index_name = ALIGN_INDEX_NAME,
+        user_added_rsemParams = EXTRA_RSEM_PARAMS
+    shell:
+        """
+        ## use wildcard to pull the line for each sampleid and the value from the last column (rsem strandedness will always be in the last column)
+        strandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $NF}}' )
+
+        ## grab second to last column value to print the strandedness for user understanding
+        readableStrandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $(NF-1)}}' )
+        echo "Calculated strandedness of {params.current_sample} is: ${{readableStrandedness}}"
+
+        mkdir -p {output.rsem_out_dir}
+
+        rsem-calculate-expression --paired-end \
+                                  --bam \
+                                  -p {params.nthreads} {params.user_added_rsemParams} \
+                                  --forward-prob ${{strandedness}} \
+                                  --time {input.alignedBam} {input.rsem_index_dir}/{params.rsem_index_name} {output.rsem_out_dir}/{params.current_sample}
+        
+        """

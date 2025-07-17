@@ -45,10 +45,13 @@ def picard_calculate_strandedness(file_pattern,
 
         if (picard_file["PCT_R1_TRANSCRIPT_STRAND_READS"] >= 0.70).all():
             picard_file["strandedness"] = "R1"
+            picard_file["rsem_strand_key"] = 1
         elif (picard_file["PCT_R2_TRANSCRIPT_STRAND_READS"] >= 0.70).all():
             picard_file["strandedness"] = "R2"
+            picard_file["rsem_strand_key"] = 0
         else:
             picard_file["strandedness"] = "unstranded"
+            picard_file["rsem_strand_key"] = 0.5
 
         picard_out_dict.update({f"{sample}": picard_file})
 
