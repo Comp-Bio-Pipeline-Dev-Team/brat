@@ -76,15 +76,15 @@ rule all:
                sample=SAMPLE_LIST),
         "bulk_RNAseq_out/pretrimming_multiqc_report.html",
         expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.log",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/cutadapt/{sample}/{sample}_cutadapt.err",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/posttrimming_fastqc/{sample}/",
-                sample=MINI_SAMPLE_LIST),
+                sample=SAMPLE_LIST),
         "bulk_RNAseq_out/posttrimming_multiqc_report.html",
         NEW_FASTA_PATH,
         NEW_ANNOT_PATH,
@@ -93,16 +93,16 @@ rule all:
         "reference_indices/rsem/",
         "reference_indices/star/",
         expand("bulk_RNAseq_out/star_alignment/{sample}/",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize.txt",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf",
-               sample=MINI_SAMPLE_LIST),
+               sample=SAMPLE_LIST),
         "bulk_RNAseq_out/picard/allSample_picard_metrics.csv",
         expand("bulk_RNAseq_out/rsem_quantification/{sample}/",
-               sample=MINI_SAMPLE_LIST)
+               sample=SAMPLE_LIST)
         
 
 ##### SUBWORKFLOW ONE!! #####
@@ -225,7 +225,7 @@ use rule run_pretrimming_fastqc as run_posttrimming_fastqc with:
 use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
     input:
         inDirs = expand("bulk_RNAseq_out/posttrimming_fastqc/{sample}/",
-                        sample=MINI_SAMPLE_LIST)
+                        sample=SAMPLE_LIST)
     output:
         outFile = "bulk_RNAseq_out/posttrimming_multiqc_report.html"
     params:
@@ -353,7 +353,8 @@ rule run_star_alignment:
         annotFile = NEW_ANNOT_PATH
     output:
         star_out_dir = directory("bulk_RNAseq_out/star_alignment/{sample}/"),
-        star_out_file = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam"
+        star_out_coordFile = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam",
+        star_out_transcriptFile = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam"
     singularity:
         STAR_SING
     params:
@@ -396,7 +397,7 @@ rule run_star_alignment:
 ## picard.jar file needs to be local, NOT in the container, probs will download it in the move_reference_files rule or have it prewrapped in the pipeline
 rule run_picard_collect_rna_seq:
     input:
-        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam",
+        aligned_coordBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam",
         refFlat_file = NEW_PICARD_REFFLAT,
         riboIntList_file = NEW_PICARD_RRNA_INTERVAL
     output:
@@ -412,7 +413,7 @@ rule run_picard_collect_rna_seq:
         mkdir -p {params.sample_out_dir}
 
         java -jar {params.jar_file} CollectRnaSeqMetrics \
-             I={input.alignedBam} \
+             I={input.aligned_coordBam} \
              O={output.collect_rnaSeq_file} \
              REF_FLAT={input.refFlat_file} \
              STRAND={params.strandedness} \
@@ -425,7 +426,7 @@ rule run_picard_collect_rna_seq:
 ## this works
 rule run_picard_collect_insert_size:
     input:
-        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam"
+        aligned_coordBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam"
     output:
         insertSize_file = "bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize.txt",
         insertSize_histogram = "bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf"
@@ -447,7 +448,7 @@ rule run_picard_collect_insert_size:
         fi
 
         java -jar {params.jar_file} CollectInsertSizeMetrics \
-             I={input.alignedBam} \
+             I={input.aligned_coordBam} \
              O={output.insertSize_file} \
              H={output.insertSize_histogram}
         """
@@ -462,7 +463,7 @@ rule run_picard_collect_insert_size:
 rule calculate_strandedness:
     input:
         collect_rnaSeq_files = expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt",
-                                      sample=MINI_SAMPLE_LIST)
+                                      sample=SAMPLE_LIST)
     output:
         allSample_picard_strandedness = "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
     params:
@@ -478,7 +479,7 @@ rule calculate_strandedness:
 ## have to also provide the file prefix with the output directory path (I forgot this)
 rule run_rsem_quantification:
     input:
-        alignedBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam",
+        aligned_transcriptBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam",
         rsem_index_dir = "reference_indices/rsem/",
         picard_metrics_file = "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
     output:
@@ -505,6 +506,6 @@ rule run_rsem_quantification:
                                   --bam \
                                   -p {params.nthreads} {params.user_added_rsemParams} \
                                   --forward-prob ${{strandedness}} \
-                                  --time {input.alignedBam} {input.rsem_index_dir}/{params.rsem_index_name} {output.rsem_out_dir}/{params.current_sample}
+                                  --time {input.aligned_transcriptBam} {input.rsem_index_dir}/{params.rsem_index_name} {output.rsem_out_dir}/{params.current_sample}
         
         """

@@ -1,0 +1,17 @@
+## config file to re-run roberta's sequences with a comprehensive human genome 
+## 07-18-2025
+
+raw_seq_in: 'rp_bulkRNAseq'
+metadata_file: 'metadata.tsv'
+align_to_fasta: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/GRCh38.p14.genome.fa'
+align_to_gtf: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/gencode.v48.annotation.gtf'
+align_to_name: 'GRCh38.p14.comp'
+## default is 0, pipeline will infer actual read length with input of 0, if the input is greater than 0, will use the input value (user determined)
+raw_seq_read_length: 0
+picard_refFlat: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/gencode.v48.annotation.refflat' 
+picard_rrna_interval_list: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/GRCh38.p14_ribosomal_interval_list_with_header.txt'
+cutadapt_params: ''
+## use --sjdbGTFtagExonParentGene gene_name flag when using gencode comprehensive genomes!
+## using the most optimized alignment parameters for her sequences
+star_params: '--sjdbGTFtagExonParentGene gene_name --outSAMunmapped Within KeepPairs --outReadsUnmapped Fastx --outFilterScoreMinOverLread 0.20 --outFilterMatchNminOverLread 0.20'
+rsem_params: ' '
