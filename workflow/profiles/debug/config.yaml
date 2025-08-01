@@ -43,12 +43,12 @@ set-resources:
         cpus_per_task: 1
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/07182025/posttrimming_multiqc_%J.log' '--error=logs/07182025/posttrimming_multiqc_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'"
-    move_reference_files:
+    symlink_reference_files:
         runtime: "1h"
         mem: "1GB"
         cpus_per_task: 1
         nodes: 1
-        slurm_extra: "'--qos=normal' '--output=logs/07182025/move_reference_files_%J.log' '--error=logs/07182025/move_reference_files_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
+        slurm_extra: "'--qos=normal' '--output=logs/07182025/symlink_reference_files_%J.log' '--error=logs/07182025/symlink_reference_files_%J.err' '--mail-type=FAIL,END' '--mail-user=MADISON.APGAR@CUANSCHUTZ.EDU'" 
     generate_rsem_index:
         runtime: "1h"
         mem: "3.75GB" ## might need to bump this a little for comprehensive genome

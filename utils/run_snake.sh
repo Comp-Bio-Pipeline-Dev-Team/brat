@@ -9,17 +9,17 @@
 ##    ln -s /scratch/alpine/$USER/apptainer_cache ~/.singularity
 ##fi
 
-snakeLog="logs/07182025/snake_log_07182025.log"
+snakeLog="logs/2roberta_compGenome_snakeLog_07232025.log"
 
 snakemake \
     -s workflow/snakefile \
-    --configfile workflow/config_files/test_config.yml \
+    --configfile workflow/config_files/roberta_compGenome_config.yml \
     --jobs unlimited \
-    --workflow-profile workflow/profiles/debug \
+    --workflow-profile workflow/profiles/default \
     --software-deployment-method apptainer \
     --rerun-incomplete \
-    --dry-run
-    ##2>${snakeLog}
+    2>${snakeLog}
+    ##--dry-run
     ##--unlock
 
 

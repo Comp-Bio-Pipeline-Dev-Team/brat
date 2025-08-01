@@ -4,7 +4,7 @@ from os import environ
 import pandas as pd
 import re
 import glob
-from snake_utils.snake_functions import comb_filepaths, make_fp_dict, picard_calculate_strandedness
+from snake_utils.snake_functions import comb_filepaths, make_fp_dict, picard_calculate_strandedness, concat_picard_insert_size, concat_star_log, specified_strandedness
 
 
 RAW_SEQ_IN =  config['raw_seq_in']
@@ -100,7 +100,9 @@ rule all:
                sample=SAMPLE_LIST),
         expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize_histogram.pdf",
                sample=SAMPLE_LIST),
-        "bulk_RNAseq_out/picard/allSample_picard_metrics.csv",
+        "bulk_RNAseq_out/picard/allSample_picard_metrics.tsv",
+        "bulk_RNAseq_out/picard/allSample_picard_insertSize.tsv",
+        "bulk_RNAseq_out/star_alignment/allSample_star_logs.tsv",
         expand("bulk_RNAseq_out/rsem_quantification/{sample}/",
                sample=SAMPLE_LIST)
         
@@ -235,7 +237,7 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
 
 
 ## move input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
-rule move_reference_files:
+rule symlink_reference_files:
     input:
         fastaFile = ALIGN_FASTA,
         annotFile = ALIGN_ANNOT,
@@ -252,19 +254,42 @@ rule move_reference_files:
         """
         mkdir -p {params.ref_directory}
 
-        ## rsem and star reference files
-        mv {input.fastaFile} {output.new_loc_fasta}
-        echo "moved genome fasta file to working directory!"
+        refFileList=({input.fastaFile}
+                     {input.annotFile}
+                     {input.refFlat}
+                     {input.riboIntList}
+                    )
+        
+        ## shouldnt need this line but keeping in just in case
+        ##symlinkTo={params.ref_directory}
 
-        mv {input.annotFile} {output.new_loc_annot}
-        echo "moved genome annotation file to working directory!"
+        for file in ${{refFileList[*]}};
+        do
+            fileName=$( basename ${{file}} )
+
+            if [ -L {params.ref_directory}/${{fileName}} ]; 
+            then
+                echo "Symlink already exists for ${{fileName}}!"
+            else
+                echo "Symlink for ${{fileName}} does not exist. Generating symlink..."
+                ln -s ${{file}} {params.ref_directory}/${{fileName}}
+            fi
+        done
+
+        ## old version where i physically moved the files!
+        ## rsem and star reference files
+        ##mv {input.fastaFile} {output.new_loc_fasta}
+        ##echo "moved genome fasta file to working directory!"
+
+        ##mv {input.annotFile} {output.new_loc_annot}
+        ##echo "moved genome annotation file to working directory!"
 
         ## picard reference files
-        mv {input.refFlat} {output.new_refFlat}
-        echo "moved picard refFlat file to working directory!"
+        ##mv {input.refFlat} {output.new_refFlat}
+        ##echo "moved picard refFlat file to working directory!"
 
-        mv {input.riboIntList} {output.new_riboIntList}
-        echo "moved picard rRNA interval list to working directory!"
+        ##mv {input.riboIntList} {output.new_riboIntList}
+        ##echo "moved picard rRNA interval list to working directory!"
         """
 
 
@@ -460,23 +485,37 @@ rule run_picard_collect_insert_size:
 ## all picard for all samples should complete before we put them all into rule to wrangle picard results into same df and save as .csv
 ## use run: instead of shell: 
 ## do I need to import needed libraries in the run directive or will it be okay? - it wil be okay 
+## i should probably name this rule something different but i cant think of anything right now
 rule calculate_strandedness:
     input:
         collect_rnaSeq_files = expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.metrics.txt",
-                                      sample=SAMPLE_LIST)
+                                      sample=SAMPLE_LIST),
+        collect_insertSize_files = expand("bulk_RNAseq_out/picard/{sample}/{sample}.picard.insertSize.txt",
+                                          sample=SAMPLE_LIST),
+        star_log_files = expand("bulk_RNAseq_out/star_alignment/{sample}/{sample}.Log.final.out",
+                                sample=SAMPLE_LIST)
     output:
-        allSample_picard_strandedness = "bulk_RNAseq_out/picard/allSample_picard_metrics.csv"
+        allSample_picard_strandedness = "bulk_RNAseq_out/picard/allSample_picard_metrics.tsv",
+        allSample_picard_insertSize = "bulk_RNAseq_out/picard/allSample_picard_insertSize.tsv",
+        allSample_star_logs = "bulk_RNAseq_out/star_alignment/allSample_star_logs.tsv"
     params:
-        picard_metrics_pattern = "bulk_RNAseq_out/picard/*/*.picard.metrics.txt"
+        picard_metrics_pattern = "bulk_RNAseq_out/picard/*/*.picard.metrics.txt",
+        picard_insertSize_pattern = "bulk_RNAseq_out/picard/*/*.picard.insertSize.txt",
+        star_logs_pattern = "bulk_RNAseq_out/star_alignment/*/*.Log.final.out"
     run:
         picard_calculate_strandedness(file_pattern=params.picard_metrics_pattern,
                                       out_file=output.allSample_picard_strandedness)
+        concat_picard_insert_size(file_pattern=params.picard_insertSize_pattern,
+                                  out_file=output.allSample_picard_insertSize)
+        concat_star_log(file_pattern=params.star_logs_pattern,
+                        out_file=output.allSample_star_logs)
 
 
 
 ## rsem 
 ## need to include the genome name prefix for the rsem index files or else it loses its mind
 ## have to also provide the file prefix with the output directory path (I forgot this)
+## need to test that the user specified strandedness actually works as desired!!!
 rule run_rsem_quantification:
     input:
         aligned_transcriptBam = "bulk_RNAseq_out/star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam",
@@ -489,16 +528,26 @@ rule run_rsem_quantification:
     params:
         nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
         current_sample = lambda wc: wc.get("sample"),
+        user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=wilcards.sample), ## need to check that this will pull the wildcard appropriately
         rsem_index_name = ALIGN_INDEX_NAME,
         user_added_rsemParams = EXTRA_RSEM_PARAMS
     shell:
         """
-        ## use wildcard to pull the line for each sampleid and the value from the last column (rsem strandedness will always be in the last column)
-        strandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $NF}}' )
+        ## idk what im doing w this tbh but I think it'll work 
+        isEmpty={params.user_strandedness}
 
-        ## grab second to last column value to print the strandedness for user understanding
-        readableStrandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $(NF-1)}}' )
-        echo "Calculated strandedness of {params.current_sample} is: ${{readableStrandedness}}"
+        if [[ -z "${{isEmpty}}" ]];
+        then
+            ## use wildcard to pull the line for each sampleid and the value from the last column (rsem strandedness will always be in the last column)
+            strandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $NF}}' )
+
+            ## grab second to last column value to print the strandedness for user understanding
+            readableStrandedness=$( grep "{params.current_sample}" {input.picard_metrics_file} | awk -F',' '{{print $(NF-1)}}' )
+            echo "Calculated strandedness of {params.current_sample} is: ${{readableStrandedness}}"
+        else
+            strandedness={params.user_strandedness}
+            echo "User specified strandedness for {params.current_sample} is: ${{strandedness}}"
+        fi
 
         mkdir -p {output.rsem_out_dir}
 
