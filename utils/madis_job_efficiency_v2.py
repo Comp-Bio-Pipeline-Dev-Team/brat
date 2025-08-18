@@ -109,6 +109,10 @@ def get_job_information(in_dir):
 
 		##\[(.*?)\]
 
+		## trying to fix python's UnboundLocalError 
+		## I think this has to do with rules that don't have a wildcard stated but idk 
+		sample_name = None
+
 		## pull name of wildcard from log file
 		with open(file_path, "r") as input_file:
 			for line in input_file:

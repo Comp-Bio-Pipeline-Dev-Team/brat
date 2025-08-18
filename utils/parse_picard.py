@@ -3,18 +3,42 @@ from os.path import basename
 import re
 import glob
 
+## finds line number for the line containing a specified string and returns only the line number 
+##def get_lines_to_skip(file_path,
+##                      line_pattern):
+##    with open(file_path, 'r') as raw_file:
+##            lines_w_nums = [(line_num, line.strip()) for line_num,line in enumerate(raw_file, start=1)]
+##            skip_line = list(filter(lambda item: line_pattern in item[1], lines_w_nums))[0][0]
+##    return(skip_line)
 
+## copilot's optimized version of the function:
+## i do like this one better 
+def get_lines_to_skip(file_path, 
+                      line_pattern):
+    with open(file_path, 'r') as raw_file:
+        for line_num, line in enumerate(raw_file, start=1):
+            if re.search(line_pattern, line):
+                return line_num
+    raise ValueError(f"Pattern '{line_pattern}' not found in file '{file_path}'")
+    
+
+## tell me which line ## METRICS is on and then skip that many lines 
 def wrangle_picard_output(file_pattern,
                           out_file):
     picard_collectRNAseq_files = [f for f in glob.glob(file_pattern)]
+    search_line_pattern = r"^## METRICS"
 
     picard_out_dict = {}
 
     for file in picard_collectRNAseq_files:
+
+        skip_line_num = get_lines_to_skip(file_path=file,
+                                          line_pattern=search_line_pattern)
+
         picard_file = pd.read_csv(file, 
-                                sep="\t",
-                                skiprows=6,
-                                nrows=1)
+                                 sep="\t",
+                                 skiprows=skip_line_num,
+                                 nrows=1)
 
         file_name = basename(file)
         sample = re.sub(".picard.metrics.txt", "", file_name)
@@ -37,21 +61,26 @@ def wrangle_picard_output(file_pattern,
 
     all_picard_res.to_csv(out_file, sep="\t")
 
+picard_fp = "/Users/apgarm/projects/pi_projects/rpelanda/bulkRNAseq_humanized_mice_autoreactive_vs_nonAutoreactive_bcells_01092025/comp_genome_redo/picard/*.picard.metrics.txt"
+wrangle_picard_output(file_pattern=picard_fp,
+                      out_file="test_picard_res.tsv")
 
-##wrangle_picard_output(file_pattern="bulk_RNAseq_out/picard/*/*.picard.metrics.txt",
-                      ##out_file="test_picard_res.csv")
 
 
 def wrangle_picard_insert_size(file_pattern,
                                out_file):
     picard_collectInsertSize_files = [f for f in glob.glob(file_pattern)]
+    search_line_pattern = r"^## METRICS"
 
     picard_out_dict = {}
 
     for file in picard_collectInsertSize_files:
+
+        skip_line_num = get_lines_to_skip(file_path=file,
+                                          line_pattern=search_line_pattern)
         picard_file = pd.read_csv(file, 
                                   sep="\t",
-                                  skiprows=6,
+                                  skiprows=skip_line_num,
                                   nrows=1)
 
         file_name = basename(file)
@@ -85,9 +114,9 @@ def wrangle_star_log(file_pattern,
         ## remove the pipe symbol from the first column 
         star_file["key"] = star_file["key"].str.replace(" |", "")
         ## pull excess white space off of the values in the first column
-        star_file["key"] = star_file["key"].str.strip()
-        star_file["key"] = star_file["key"].str.replace(r"[\s/]", "_", regex=True)
-        star_file["key"] = star_file["key"].str.replace(r"[,:-]", "", regex=True)
+        star_file["key"] = star_file["key"].str.strip().replace(r"[\s/]", "_", regex=True).replace(r"[,:-]", "", regex=True)
+        ##star_file["key"] = star_file["key"].str.replace(r"[\s/]", "_", regex=True)
+        ##star_file["key"] = star_file["key"].str.replace(r"[,:-]", "", regex=True)
         star_file["key"] = star_file["key"].str.replace("%", "pct")
         ## remove percent signs from the values in the second column 
         star_file["value"] = star_file["value"].str.replace("%", "")
@@ -118,32 +147,14 @@ def wrangle_star_log(file_pattern,
 test_star_fp = "/Users/apgarm/projects/pi_projects/rpelanda/bulkRNAseq_humanized_mice_autoreactive_vs_nonAutoreactive_bcells_01092025/comp_genome_redo/star_alignment/*.Log.final.out"
 
 
-wrangle_star_log(file_pattern=test_star_fp,
-                 out_file="test_star_file.tsv")
+##wrangle_star_log(file_pattern=test_star_fp,
+                 ##out_file="test_star_file.tsv")
 
 
-##star_file = pd.read_csv(test_star_fp, 
-##                        sep="\t",
-##                        names=["key", "value"])
-#### remove the pipe symbol from the first column 
-##star_file["key"] = star_file["key"].str.replace(" |", "")
-#### pull excess white space off of the values in the first column
-##star_file["key"] = star_file["key"].str.strip()
-#### remove percent signs from the values in the second column 
-##star_file["value"] = star_file["value"].str.replace("%", "")
-#### drop na values from the second column 
-##star_file.dropna(subset=["value"], inplace=True)
-#### flip the two columns to rows 
-##final_star_file = star_file.T.reset_index(drop=True)
-#### make the first row the column names
-##final_star_file.rename(columns=final_star_file.iloc[0], inplace=True)
-#### drop the duplicate column name row 
-##final_star_file.drop(final_star_file.index[0], inplace=True)
+## create test sample metadata file
+##test_dict = {'sampleid': ['test'],
+##             'forward': ['test_R1.fq.gz'],
+##             'reverse': ['test_R2.fq.gz']}
+##test_df = pd.DataFrame(test_dict)
 ##
-#### pull the sampleid from the file name and add it as a new column 
-##file_name = basename(test_star_fp)
-##sample = re.sub(".Log.final.out", "", file_name)
-##final_star_file["sampleid"] = sample
-##
-##print(final_star_file)
-
+##test_df.to_csv("test_samp_metadata.tsv", sep="\t")

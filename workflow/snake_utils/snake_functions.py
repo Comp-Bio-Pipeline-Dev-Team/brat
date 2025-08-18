@@ -26,17 +26,31 @@ def make_fp_dict(metadata_df,
 
     return(raw_sample_dict_out)
 
+## searchs through the lines of a file looking for a specific pattern and returns the line number of the first occurrence
+## of that pattern
+## to be used in the picard output file wrangling functions (below)!! 
+def get_lines_to_skip(file_path, 
+                      line_pattern):
+    with open(file_path, 'r') as raw_file:
+        for line_num, line in enumerate(raw_file, start=1):
+            if re.search(line_pattern, line):
+                return line_num
+    raise ValueError(f"Pattern '{line_pattern}' not found in file '{file_path}'")
+
 
 def picard_calculate_strandedness(file_pattern,
                                   out_file):
     picard_out_dict = {}
 
     picard_collectRNAseq_files = [f for f in glob.glob(file_pattern)]
+    search_line_pattern = r"^## METRICS"
 
     for file in picard_collectRNAseq_files:
+        skip_line_num = get_lines_to_skip(file_path=file,
+                                          line_pattern=search_line_pattern)
         picard_file = pd.read_csv(file, 
                                 sep="\t",
-                                skiprows=6,
+                                skiprows=skip_line_num,
                                 nrows=1)
 
         file_name = basename(file)
@@ -62,14 +76,17 @@ def picard_calculate_strandedness(file_pattern,
 
 def concat_picard_insert_size(file_pattern,
                               out_file):
-    picard_collectInsertSize_files = [f for f in glob.glob(file_pattern)]
-
     picard_out_dict = {}
 
+    picard_collectInsertSize_files = [f for f in glob.glob(file_pattern)]
+    search_line_pattern = r"^## METRICS"
+
     for file in picard_collectInsertSize_files:
+        skip_line_num = get_lines_to_skip(file_path=file,
+                                          line_pattern=search_line_pattern) 
         picard_file = pd.read_csv(file, 
                                   sep="\t",
-                                  skiprows=6,
+                                  skiprows=skip_line_num,
                                   nrows=1)
 
         file_name = basename(file)
@@ -129,10 +146,8 @@ def specified_strandedness(metadata_df,
     if 'strandedness' in metadata_df.columns:
         sample_filt_meta = metadata_df.loc[metadata_df['sampleid'] == sampleid]
         rsem_strandedness = sample_filt_meta['strandedness']
-        print(f"User specified strandedness for sample {sampleid} is: {rsem_strandedness}")
     else:
         rsem_strandedness=""
-        print('User did not specify strandedness for samples, will use inferred values!')
     return(rsem_strandedness)
 
 
