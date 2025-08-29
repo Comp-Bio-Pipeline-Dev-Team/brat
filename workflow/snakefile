@@ -316,7 +316,7 @@ rule generate_rsem_index:
         genome_annot_col = ANNOT_COL_NAME ## gene_id should be the default!! only changed based on user input!
     shell:
         """
-        if [ {params.genome_annot_col} == "gene_id"];
+        if [ {params.genome_annot_col} == "gene_id" ];
         then
             annotFile={input.annotFile}
             echo "Using gene_id column in .gtf file for sequence annotations!"

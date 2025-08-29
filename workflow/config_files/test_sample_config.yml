@@ -5,7 +5,7 @@ raw_seq_in: 'test_seqs'
 metadata_file: 'test_samp_metadata.tsv'
 align_to_fasta: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/GRCh38.p14.genome.fa'
 align_to_gtf: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/gencode.v48.annotation.gtf'
-gtf_annot_col: 'gene_id'
+gtf_annot_col: 'gene_name'
 align_to_name: 'GRCh38.p14.comp'
 ## default is 0, pipeline will infer actual read length with input of 0, if the input is greater than 0, will use the input value (user determined)
 raw_seq_read_length: 0
