@@ -40,7 +40,7 @@ def get_lines_to_skip(file_path,
 
 def picard_calculate_strandedness(file_pattern,
                                   out_file):
-    picard_out_dict = {}
+    picard_out_list = []
 
     picard_collectRNAseq_files = [f for f in glob.glob(file_pattern)]
     search_line_pattern = r"^## METRICS"
@@ -68,15 +68,15 @@ def picard_calculate_strandedness(file_pattern,
             picard_file["strandedness"] = "unstranded"
             picard_file["rsem_strand_key"] = 0.5
 
-        picard_out_dict.update({f"{sample}": picard_file})
+        picard_out_list.append(picard_file)
 
-    all_picard_res = pd.concat(picard_out_dict, ignore_index=True)
+    all_picard_res = pd.concat(picard_out_list, ignore_index=True)
     all_picard_res.to_csv(out_file, sep="\t")
 
 
 def concat_picard_insert_size(file_pattern,
                               out_file):
-    picard_out_dict = {}
+    picard_out_list = []
 
     picard_collectInsertSize_files = [f for f in glob.glob(file_pattern)]
     search_line_pattern = r"^## METRICS"
@@ -93,16 +93,16 @@ def concat_picard_insert_size(file_pattern,
         sample = re.sub(".picard.insertSize.txt", "", file_name)
         picard_file["sampleid"] = sample
 
-        picard_out_dict.update({f"{sample}": picard_file})
+        picard_out_list.append(picard_file)
 
-    all_picard_res = pd.concat(picard_out_dict, ignore_index=True)
+    all_picard_res = pd.concat(picard_out_list, ignore_index=True)
     all_picard_res.to_csv(out_file, sep="\t")
 
 
 def concat_star_log(file_pattern,
                     out_file):
     star_log_files = [f for f in glob.glob(file_pattern)]
-    star_out_dict = {}
+    star_out_list = []
 
     for file in star_log_files:
         star_file = pd.read_csv(file, 
@@ -135,9 +135,9 @@ def concat_star_log(file_pattern,
         sample = re.sub(".Log.final.out", "", file_name)
         star_file["sampleid"] = sample
 
-        star_out_dict.update({f"{sample}": star_file})
+        star_out_list.append(star_file)
 
-    all_star_res = pd.concat(star_out_dict, ignore_index=True)
+    all_star_res = pd.concat(star_out_list, ignore_index=True)
     all_star_res.to_csv(out_file, sep="\t")
 
 
