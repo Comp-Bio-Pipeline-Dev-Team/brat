@@ -1,0 +1,6 @@
+pandas
+os
+re
+glob
+pytest
+pytest-cov
