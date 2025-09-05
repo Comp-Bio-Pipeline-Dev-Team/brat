@@ -19,3 +19,17 @@ do
         ln -s ${file} ${symlinkTo}/${fileName}
     fi
 done
+
+## snakemake version 
+##for file in ${{refFileList[*]}};
+##do
+##    fileName=$( basename ${{file}} )
+
+##    if [ -L {params.ref_directory}/${{fileName}} ]; 
+##    then
+##        echo "Symlink already exists for ${{fileName}}!"
+##    else
+##        echo "Symlink for ${{fileName}} does not exist. Generating symlink..."
+##        ln -s ${{file}} {params.ref_directory}/${{fileName}}
+##    fi
+##done

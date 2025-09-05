@@ -240,8 +240,9 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
 
 
 
-## move input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
-rule symlink_reference_files:
+## copy input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
+## symlinks for individual files didnt work bc symlink names are copied over but not the actual files (i.e. containers break the symlinks)
+rule copy_reference_files:
     input:
         fastaFile = ALIGN_FASTA,
         annotFile = ALIGN_ANNOT,
@@ -263,45 +264,22 @@ rule symlink_reference_files:
                      {input.refFlat}
                      {input.riboIntList}
                     )
-        
-        ## shouldnt need this line but keeping in just in case
-        ##symlinkTo={params.ref_directory}
 
         for file in ${{refFileList[*]}};
         do
             fileName=$( basename ${{file}} )
 
-            if [ -L {params.ref_directory}/${{fileName}} ]; 
-            then
-                echo "Symlink already exists for ${{fileName}}!"
-            else
-                echo "Symlink for ${{fileName}} does not exist. Generating symlink..."
-                ln -s ${{file}} {params.ref_directory}/${{fileName}}
-            fi
+            cp ${{file}} {params.ref_directory}/${{fileName}}
+
+            echo "Copying ${{fileName}} to {params.ref_directory}/!"
         done
 
-        ## old version where i physically moved the files!
-        ## rsem and star reference files
-        ##mv {input.fastaFile} {output.new_loc_fasta}
-        ##echo "moved genome fasta file to working directory!"
-
-        ##mv {input.annotFile} {output.new_loc_annot}
-        ##echo "moved genome annotation file to working directory!"
-
-        ## picard reference files
-        ##mv {input.refFlat} {output.new_refFlat}
-        ##echo "moved picard refFlat file to working directory!"
-
-        ##mv {input.riboIntList} {output.new_riboIntList}
-        ##echo "moved picard rRNA interval list to working directory!"
         """
-
 
 
 ## wont want to run this rule unless its needed - config option/looking at star log files for %uniquely_mapped v %percent_multimapped v %unmapped thresholds for when its run
 ## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
 ## finally works using outside fasta/gtf files with above rule (yay!!)
-## need to add a better option to choose which column to use for annotations in the .gtf file, maybe just gene_id vs not? 
 rule generate_rsem_index:
     input:
         fastaFile = NEW_FASTA_PATH,
@@ -323,7 +301,7 @@ rule generate_rsem_index:
         else
             cp {input.annotFile} {params.ref_directory}/tmp.gtf
             sed -i -e 's/gene_id/tmp_gene_id/g' -e 's/{params.genome_annot_col}/gene_id/g' {params.ref_directory}/tmp.gtf
-            annotFile="{params.ref_directory}/tmp.gtf"
+            annotFile={params.ref_directory}/tmp.gtf
             echo "Using {params.genome_annot_col} column in .gtf file for sequence annotations!"
         fi
 
