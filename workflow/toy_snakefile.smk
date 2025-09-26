@@ -1,0 +1,131 @@
+## i created this toy snakefile to test out big changes to how the snakefile is structured (i.e. creating subworkflows for rules)
+
+from os.path import join as pj
+from os.path import basename
+from os.path import exists
+from os import environ
+import pandas as pd
+import re
+import glob
+from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_to_skip, picard_calculate_strandedness, concat_picard_insert_size, concat_star_log, specified_strandedness
+
+RAW_SEQ_IN =  config['raw_seq_in']
+METADATA = pd.read_csv(config['metadata_file'], sep='\t')
+SAMPLE_LIST = METADATA['sampleid'].tolist()
+
+## allows for output directory name to be specified by user
+## otherwise defaults to "bulk_RNAseq_out"
+if config["out_dir"] != "brat_out":
+    OUT_DIR_NAME = "{}.{}".format(config["out_dir"], "brat_out")
+else:
+    OUT_DIR_NAME = config["out_dir"]
+
+## user input additional parameters for cutadapt, star, and rsem (optional)
+EXTRA_CUTADAPT_PARAMS = config['cutadapt_params']
+EXTRA_STAR_PARAMS = config['star_params']
+EXTRA_RSEM_PARAMS = config['rsem_params']
+
+## user input genome index files and the name of the index 
+ALIGN_FASTA = config['align_to_fasta']
+ALIGN_ANNOT = config['align_to_gtf']
+ANNOT_COL_NAME = config['gtf_annot_col']
+ALIGN_INDEX_NAME = config['align_to_name']
+PICARD_REFFLAT = config['picard_refFlat']
+PICARD_RRNA_INTERVAL = config['picard_rrna_interval_list']
+
+## to move wanted genome index files for star, rsem, and picard into the pipeline's working directory so bind points dont break 
+REF_DIR = "user_reference_files"
+NEW_FASTA_PATH= pj(REF_DIR, basename(ALIGN_FASTA))
+NEW_ANNOT_PATH = pj(REF_DIR, basename(ALIGN_ANNOT))
+NEW_PICARD_REFFLAT = pj(REF_DIR, basename(PICARD_REFFLAT))
+NEW_PICARD_RRNA_INTERVAL = pj(REF_DIR, basename(PICARD_RRNA_INTERVAL))
+
+READ_LENGTH = config['raw_seq_read_length']
+
+## for rsem index generation 
+RSEM_INDEX_DIR = pj("reference_indices/rsem", ALIGN_INDEX_NAME)
+
+
+sample_fp_dict = make_fp_dict(metadata_df=METADATA,
+                              dataset_dir=RAW_SEQ_IN)
+
+
+## conda environment
+## need to go up a level since sub workflows are in rules/ subdirectory
+## not sure if this will apply to anything else..I'm a little confused about it 
+FASTQC_CONDA = "../envs/fastqc_env.yml"
+MULTIQC_CONDA = "../envs/multiqc_env.yml"
+
+## singularities (preferred) - NEED TO DEBUG THIS ON ALPINE
+FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
+MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.26"
+CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
+STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.10b"
+RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"
+PICARD_SING = "docker://madiapgar/bulk_rna_seq:picard-v2.27.5"
+
+## functions? to use these as inputs you need to have the function defined in the snakefile which is dumb but whatever
+## added wildcard constraints so my input function would stop breaking, this regex works for the current sampleids but will probs have to
+## alter it in the future
+## regex to only include sample id but not full path: [^/]* (excludes anything with forward slashes in it) - ADD EXCLUDING WHITE SPACE (\s)
+## current regex only selects letters, numbers, and underscores: \\w+
+wildcard_constraints:
+    sample="\\w+"
+
+def pull_rawSeq_fps(wildcards):
+    raw_files = sample_fp_dict[wildcards.sample]
+    return(raw_files)
+
+
+# Set apptainer bindings NOT A PERMANENT SOLUTION
+## idk if this is going to work
+##os.environ["APPTAINER_BIND"] = "/scratch/alpine/mapgar@xsede.org:/scratch/alpine/mapgar@xsede.org"
+
+## output file lists for rule all
+main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
+               sample=SAMPLE_LIST),
+            pj(OUT_DIR_NAME, "pretrimming_multiqc_report.html"),
+            expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.log"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "posttrimming_fastqc/{sample}/"),
+                    sample=SAMPLE_LIST),
+            pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html"),
+            NEW_FASTA_PATH,
+            NEW_ANNOT_PATH,
+            NEW_PICARD_RRNA_INTERVAL,
+            NEW_PICARD_REFFLAT,
+            "reference_indices/star/",
+            expand(pj(OUT_DIR_NAME, "star_alignment/{sample}/"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize.txt"),
+                sample=SAMPLE_LIST),
+            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize_histogram.pdf"),
+                sample=SAMPLE_LIST),
+            pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv"),
+            pj(OUT_DIR_NAME, "picard/allSample_picard_insertSize.tsv"),
+            pj(OUT_DIR_NAME, "star_alignment/allSample_star_logs.tsv")]
+
+rsem_out = ["reference_indices/rsem/",
+            expand(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"),
+               sample=SAMPLE_LIST)]
+
+## main workflow is always included 
+include: "rules/main.smk"
+
+## conditionally include rsem rules based on user input in config file (True/False, default will be False)
+if config['run_rsem']:
+    main_out.append(rsem_out)
+    include: "rules/run_rsem.smk"
+
+rule all:
+    input:
+        data = main_out
+        

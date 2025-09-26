@@ -9,15 +9,16 @@
 ##    ln -s /scratch/alpine/$USER/apptainer_cache ~/.singularity
 ##fi
 
-snakeLog="logs/testStar_params_snakeLog_08072025.log"
+snakeLog="logs/toySnake_rsem_snakeLog_09252025.log"
 
 snakemake \
-    -s workflow/snakefile \
+    -s workflow/toy_snakefile.smk \
     --configfile workflow/config_files/test_sample_config.yml \
     --jobs unlimited \
-    --workflow-profile workflow/profiles/default \
+    --workflow-profile workflow/profiles/debug \
     --software-deployment-method apptainer \
     --rerun-incomplete \
+    --dry-run \
     2>${snakeLog}
     ##--dry-run
     ##--unlock
