@@ -1,0 +1,11 @@
+name: picard_v2.27.5
+channels:
+  - bioconda
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.11
+  - picard=2.27.5
+  - pip
+  - pip:
+      - snakemake==8.27.1

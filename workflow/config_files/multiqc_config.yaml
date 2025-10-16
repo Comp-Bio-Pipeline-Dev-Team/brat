@@ -1,0 +1,28 @@
+force: true
+
+fn_ignore_paths:
+  - "*/star_alignment/*/*._STARpass1"
+
+fn_clean_sample_names: true
+
+table_sample_merge:
+  "(R1: untrimmed)": "_R1_001"
+  "(R2: untrimmed)": "_R2_001"
+  "(R1: trimmed)": "_R1"
+  "(R2: trimmed)": "_R2"
+
+module_order:
+  - fastqc:
+      name: "FastQC (raw reads)"
+      anchor: "fastqc_raw_reads"
+      path_filters: 
+        - "*_001_fastqc.zip"
+  - cutadapt
+  - fastqc:
+      name: "FastQC (trimmed reads)"
+      anchor: "fastqc_trimmed_reads"
+      path_filters: 
+        - "*_trimmed_fastqc.zip"
+  - star
+  - picard
+  - rsem

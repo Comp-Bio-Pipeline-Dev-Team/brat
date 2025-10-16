@@ -1,0 +1,94 @@
+## workflow profile
+## specifies resources for certain rules (workflow specific)
+## set via --workflow-profile flag in snakemake command
+executor: slurm
+jobs: unlimited
+
+default-resources:
+    slurm_partition: "amilan"
+    slurm_account: "amc-general"
+
+## to define resources for a specific rule:
+## NOTE: using cpus_per_task: instead of ntasks: to request number of cores bc we're calling snakemake from within a slurm job already 
+## so it automatically downscales the requested cores to 1 (this is annoying)
+## in alpine, 1 core = 3.75GB memory (divide memory request by 3.75 to get the correct number of cores to request)
+## currently have threading to be 2*number of cores (hardcoded in snakefile)
+set-resources:
+    run_pretrimming_fastqc:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/pretrimming_fastqc/%J.log' '--error=logs/slurm/pretrimming_fastqc/%J.err'"
+    run_pretrimming_multiqc:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/pretrimming_multiqc/%J.log' '--error=logs/slurm/pretrimming_multiqc/%J.err'" 
+    run_cutadapt:
+        runtime: 120
+        mem: "5GB"
+        cpus_per_task: 2
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/cutadapt/%J.log' '--error=logs/slurm/cutadapt/%J.err'"
+    run_posttrimming_fastqc:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/posttrimming_fastqc/%J.log' '--error=logs/slurm/posttrimming_fastqc/%J.err'"
+    run_posttrimming_multiqc:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/posttrimming_multiqc/%J.log' '--error=logs/slurm/posttrimming_multiqc/%J.err'"
+    copy_reference_files:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/copy_reference_files/%J.log' '--error=logs/slurm/copy_reference_files/%J.err'" 
+    generate_rsem_index:
+        runtime: 60
+        mem: "3.75GB" ## might need to bump this a little for comprehensive genome
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/rsem_index/%J.log' '--error=logs/slurm/rsem_index/%J.err'"
+    generate_star_index:
+        runtime: 120
+        mem: "50GB" ## bump up to 50GB for comprehensive genome index generation!
+        cpus_per_task: 14 ## 50/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/star_index/%J.log' '--error=logs/slurm/star_index/%J.err'"
+    run_star_alignment:
+        runtime: 600
+        mem: "50GB"
+        cpus_per_task: 14 ## 50/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/star_alignment/%J.log' '--error=logs/slurm/star_alignment/%J.err'"
+    run_picard_collect_rna_seq:
+        runtime: 120 ## may have to change eventually but first figure out how long it runs for 
+        mem: "15GB" ## got out of memory error so upping memory to 15GB to see how much it takes
+        cpus_per_task: 4 ## 15/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/picard_collectRNAseq/%J.log' '--error=logs/slurm/picard_collectRNAseq/%J.err'"
+    run_picard_collect_insert_size:
+        runtime: 60 ## ran for 5 mins
+        mem: "5GB"  ## took less than 3GB of memory, maybe leave it at 5?
+        cpus_per_task: 2 ## 5/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/picard_collectInsertSize/%J.log' '--error=logs/slurm/picard_collectInsertSize/%J.err'"
+    calculate_strandedness:
+        runtime: 30 ## ran for 5 mins
+        mem: "1GB"  ## decreased to 1GB bc took less memory than that 
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/calculate_strandedness/%J.log' '--error=logs/slurm/calculate_strandedness/%J.err'"
+    run_rsem_quantification:
+        runtime: 120 ## over-estimation but its okay
+        mem: "10GB"  ## decrease to 10 bc only used 2GB
+        cpus_per_task: 3 ## 10/3.75 = cpus_per_task
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/rsem_quantification/%J.log' '--error=logs/slurm/rsem_quantification/%J.err'"

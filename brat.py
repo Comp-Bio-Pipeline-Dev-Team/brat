@@ -5,9 +5,10 @@ import argparse
 import os
 from os.path import join as pj
 from os.path import dirname
+from os.path import exists
+from pathlib import Path
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import SingleQuotedScalarString
-from importlib.resources import files
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -20,6 +21,9 @@ def get_args():
     parser.add_argument("--out_dir_name",
                         help="The name of the output directory, default is 'brat_out'.",
                         default="brat_out")
+    ## need to figure out the default profile for this!! (local execution?)
+    parser.add_argument("--profile",
+                        help="The filepath to the snakemake profile .yaml file you want to use.")
     parser.add_argument("--genome_fasta",
                         help="The filepath to the genome fasta file.")
     parser.add_argument("--genome_name",
@@ -51,6 +55,11 @@ def get_args():
     parser.add_argument("--latency_wait",
                         help="The amount of time (in seconds) to wait for files to appear",
                         default=60)
+    parser.add_argument("--use_singularity",
+                        help="If this parameter is specified, the workflow will run using singularity containers \
+                              instead of conda environments (default). NOTE: apptainer MUST be installed to run this \
+                              pipeline with singularity!",
+                        action='store_true')
     parser.add_argument("--dry_run",
                         help="If this parameter is specified, you can practice running the workflow without \
                               actually starting it",
@@ -68,6 +77,33 @@ def get_config_path():
 def get_profile_path():
     return pj(dirname(__file__), "workflow/profiles/default")
 
+## make sure profile path exists and is a file not a directory
+## come up with multiple profiles and let user choose the best one for their use case
+def move_workflow_profile(profile_path,
+                          args):
+    if exists(args.profile) and not os.path.isdir(args.profile):
+        print("Setting up user profile...")
+        fix_profile_config_name = ["cp", args.profile, pj(profile_path, "config.yaml")]
+        subprocess.run(fix_profile_config_name) 
+        print("Setup successful!")
+    else:
+        print("The specified profile path does not exist or is a directory, please check that your input is a .yaml file and try again")
+        exit()
+
+## symlinking raw seqs directory to working directory of pipeline so bind points dont break 
+def symlink_raw_seqs(args):
+    if exists(args.raw_seq_dir) and os.path.isdir(args.raw_seq_dir):
+        outside_dir = args.raw_seq_dir
+        #wanted_symlink = pj(dirname(__file__), Path(outside_dir).name)
+        wanted_symlink = pj(os.getcwd(), Path(outside_dir).name)
+        if not exists(wanted_symlink):
+            os.symlink(outside_dir, wanted_symlink,
+                       target_is_directory=True)
+            print(f"symlink created at {wanted_symlink}")
+    else:
+        print("--raw_seq_dir does not exist or is not a directory, please check your input and try again")
+        exit()
+
 
 def create_config_file(config_path,
                        args):
@@ -75,7 +111,10 @@ def create_config_file(config_path,
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
 
-    config_params = {"raw_seq_in": args.raw_seq_dir,
+    #symlink_loc = pj(dirname(__file__), Path(args.raw_seq_dir).name)
+    symlink_loc = pj(os.getcwd(), Path(args.raw_seq_dir).name)
+
+    config_params = {"raw_seq_in": symlink_loc,
                      "metadata_file": args.metadata_file,
                      "out_dir": args.out_dir_name,
                      "align_to_fasta": args.genome_fasta,
@@ -96,7 +135,8 @@ def create_config_file(config_path,
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
-    
+
+
 
 def assemble_snake_command(snake_path,
                            config_path,
@@ -106,11 +146,14 @@ def assemble_snake_command(snake_path,
     snake_command = ["snakemake",
                     "-s", snake_path,
                     "--configfile", config_path,
-                    "--jobs", "unlimited",
                     "--workflow-profile", profile_path,
-                    "--software-deployment-method", "apptainer",
                     "--rerun-incomplete",
                     "--latency-wait", str(args.latency_wait)]
+    
+    if args.use_singularity is True:
+        snake_command.extend(["--software-deployment-method", "apptainer"])
+    else:
+        snake_command.extend(["--software-deployment-method", "conda"])
     
     if args.dry_run is True:
         snake_command.append("--dry-run")
@@ -121,10 +164,13 @@ def assemble_snake_command(snake_path,
 def main():
     args = get_args()
 
-    relative_config_path = "workflow/config_files/test_brat_config.yml"
+    symlink_raw_seqs(args)
     
     create_config_file(get_config_path(),
                        args)
+    
+    move_workflow_profile(get_profile_path(),
+                          args)
     
     command = assemble_snake_command(get_snake_path(),
                                      get_config_path(),

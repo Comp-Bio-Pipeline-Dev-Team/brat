@@ -57,8 +57,9 @@ FASTQC_CONDA = "../envs/fastqc_env.yml"
 MULTIQC_CONDA = "../envs/multiqc_env.yml"
 
 ## singularities (preferred) - NEED TO DEBUG THIS ON ALPINE
+UBUNTU_SING = "docker://madiapgar/bulk_rna_seq:ubuntu-v24.04"
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
-MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.26"
+MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.30"
 CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
 STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.10b"
 RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"

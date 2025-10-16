@@ -1,8 +1,12 @@
 import pandas as pd
 from os.path import basename
+from os.path import dirname
+from os.path import exists
 from os.path import join as pj
+import os
 import re
 import glob
+import subprocess
 
 ## finds line number for the line containing a specified string and returns only the line number 
 ##def get_lines_to_skip(file_path,
@@ -61,8 +65,8 @@ def wrangle_picard_output(file_pattern,
     all_picard_res.to_csv(out_file, sep="\t")
 
 picard_fp = "/Users/apgarm/projects/pi_projects/rpelanda/bulkRNAseq_humanized_mice_autoreactive_vs_nonAutoreactive_bcells_01092025/comp_genome_redo/picard/*.picard.metrics.txt"
-wrangle_picard_output(file_pattern=picard_fp,
-                      out_file="test_picard_res.tsv")
+#wrangle_picard_output(file_pattern=picard_fp,
+                      #out_file="test_picard_res.tsv")
 
 
 
@@ -185,3 +189,20 @@ def specified_strandedness(metadata_df,
 ##test_df = pd.DataFrame(test_dict)
 ##
 ##test_df.to_csv("test_samp_metadata.tsv", sep="\t")
+
+fake_profile_path = "/Users/apgarm/fake_profile.yml"
+fake_profile_dir = "/Users/apgarm/fake_profile_dir"
+
+def move_workflow_profile(user_profile_path):
+    ## make sure profile path exists and is a file not a directory
+    if exists(user_profile_path) and not os.path.isdir(user_profile_path):
+        print("Setting up user profile...")
+        ## come up with multiple profiles and let user choose the best one for their use case 
+        fix_profile_config_name = ["cp", user_profile_path, pj("workflow/profiles", "default/config.yaml")]
+        subprocess.run(fix_profile_config_name) 
+        print("Setup successful!")
+    else:
+        print("The specified profile path does not exist or is a directory, please check that your input is a .yaml file and try again.")
+        exit()
+
+move_workflow_profile(user_profile_path=fake_profile_path)

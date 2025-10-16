@@ -1,0 +1,10 @@
+name: rsem_v1.3.3
+channels:
+  - bioconda/label/cf201901
+  - conda-forge
+  - nodefaults
+dependencies:
+  - rsem=1.3.1=pl526r341h4f16992_0
+
+## rsem may not be installable via conda for macos arm64...
+## conda install bioconda/label/cf201901::rsem 

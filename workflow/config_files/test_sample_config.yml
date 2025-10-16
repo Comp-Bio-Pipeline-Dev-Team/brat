@@ -3,6 +3,7 @@
 
 raw_seq_in: 'test_seqs'
 metadata_file: 'test_samp_metadata.tsv'
+out_dir: 'test'
 align_to_fasta: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/GRCh38.p14.genome.fa'
 align_to_gtf: '/scratch/alpine/mapgar@xsede.org/outside_rna_seq_refs/human_comprehensive/gencode.v48.annotation.gtf'
 gtf_annot_col: 'gene_name'
@@ -16,4 +17,5 @@ cutadapt_params: ''
 ## i dont think the above flag was right.. needs to be --sjdbGTFtagExonParentTranscript gene_name 
 ## using the most optimized alignment parameters for her sequences
 star_params: '--sjdbGTFtagExonParentGene gene_name --outSAMunmapped Within KeepPairs --outReadsUnmapped Fastx --outFilterScoreMinOverLread 0.20 --outFilterMatchNminOverLread 0.20'
+run_rsem: True
 rsem_params: ' '
