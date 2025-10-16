@@ -15,10 +15,14 @@ rule run_pretrimming_fastqc:
     conda:
         FASTQC_CONDA
     params:
-        threads = 2
+        threads = 2,
+        software_log = SOFTWARE_LOG
     shell:
         """
         echo "running fastqc"
+
+        ## getting fastqc version for multiqc report
+        ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version)" ) >> {params.software_log}
 
         mkdir {output.outDir}
 
@@ -43,10 +47,14 @@ rule run_pretrimming_multiqc:
         MULTIQC_CONDA
     params:
         outDir = OUT_DIR_NAME, ## this might need the forward slash at the end again 
-        multiqcFilename = "pretrimming_multiqc_report.html"
+        multiqcFilename = "pretrimming_multiqc_report.html",
+        software_log = SOFTWARE_LOG
     shell:
         """
         echo "running multiqc"
+
+        ## getting multiqc version for multiqc report
+        ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version)" ) >> {params.software_log}
 
         multiqc {input.inDirs} --force -o {params.outDir} --filename {params.multiqcFilename}
         """
@@ -68,7 +76,8 @@ rule run_cutadapt:
         reverseTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz")
     singularity:
         CUTADAPT_SING
-    ##conda:
+    conda:
+        CUTADAPT_CONDA
     log:
         log = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.log"),
         error = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err")
@@ -77,7 +86,8 @@ rule run_cutadapt:
         qualTrim = 30,
         minReadLen = 10,
         n_threads = 4, ## n_threads = cpus_per_task*2
-        user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS
+        user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS,
+        software_log = SOFTWARE_LOG
     shell:
         """
         totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
@@ -91,6 +101,9 @@ rule run_cutadapt:
             echo "Quality scores are not binned (your score = ${{totalScores}}), therefore use -q"
             chemistryFlag="-q {params.qualTrim}"
         fi
+
+        ## getting cutadapt version for multiqc report
+        ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version)" ) >> {params.software_log}
 
         cutadapt -a {params.adapter_threePrime} \
                  -A {params.adapter_threePrime} \
@@ -143,6 +156,8 @@ rule copy_reference_files:
         new_loc_annot = NEW_ANNOT_PATH,
         new_refFlat = NEW_PICARD_REFFLAT,
         new_riboIntList = NEW_PICARD_RRNA_INTERVAL
+    singularity:
+        UBUNTU_SING
     params:
         ref_directory = REF_DIR
     shell:
@@ -180,6 +195,8 @@ rule generate_star_index:
         star_index_dir = directory("reference_indices/star/")
     singularity:
         STAR_SING
+    conda:
+        STAR_CONDA
     params:
         input_read_length = READ_LENGTH,
         n_threads = 22, ## n_threads = cpus_per_task*2
@@ -237,11 +254,14 @@ rule run_star_alignment:
         star_out_finalLog = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Log.final.out") 
     singularity:
         STAR_SING
+    conda:
+        STAR_CONDA
     params:
         input_read_length = READ_LENGTH,
         n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
         star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."), ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
-        user_added_starParams = EXTRA_STAR_PARAMS
+        user_added_starParams = EXTRA_STAR_PARAMS,
+        software_log = SOFTWARE_LOG
     shell:
         """
         ## have to redo read length calculation, maybe not the best? but idk what else to do 
@@ -255,6 +275,9 @@ rule run_star_alignment:
             overheadLength={params.input_read_length}
             echo "User input sequence read length is: ${{overheadLength}}"
         fi 
+
+        ## getting star version for multiqc report
+        ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version)" ) >> {params.software_log}
 
         mkdir -p {output.star_out_dir}
 
@@ -285,15 +308,22 @@ rule run_picard_collect_rna_seq:
         collect_rnaSeq_file = pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt")
     singularity:
         PICARD_SING
+    conda:
+        PICARD_CONDA
     params:
         sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
+        command = PICARD_CMD,
         jar_file = "/opt/picard-2.27.5/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
-        strandedness = "NONE"
+        strandedness = "NONE",
+        software_log = SOFTWARE_LOG
     shell:
         """
+        ## get picard version for multiqc report
+        ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version)" ) >> {params.software_log}
+
         mkdir -p {params.sample_out_dir}
 
-        java -jar {params.jar_file} CollectRnaSeqMetrics \
+        {params.command} CollectRnaSeqMetrics \
              I={input.aligned_coordBam} \
              O={output.collect_rnaSeq_file} \
              REF_FLAT={input.refFlat_file} \
@@ -313,8 +343,11 @@ rule run_picard_collect_insert_size:
         insertSize_histogram = pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize_histogram.pdf")
     singularity:
         PICARD_SING
+    conda:
+        PICARD_CONDA
     params:
         sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
+        command = PICARD_CMD,
         jar_file = "/opt/picard-2.27.5/picard.jar" ## this is in the container!!
     shell:
         """
@@ -328,7 +361,7 @@ rule run_picard_collect_insert_size:
             mkdir -p {params.sample_out_dir}
         fi
 
-        java -jar {params.jar_file} CollectInsertSizeMetrics \
+        {params.command} CollectInsertSizeMetrics \
              I={input.aligned_coordBam} \
              O={output.insertSize_file} \
              H={output.insertSize_histogram}

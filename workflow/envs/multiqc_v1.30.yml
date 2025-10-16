@@ -8,5 +8,5 @@ dependencies:
   - pip
   - pip:
     - multiqc==1.30
-    - snakemake==8.27.1
+    #    - snakemake==8.27.1
     - setuptools==75.8.0

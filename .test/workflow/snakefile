@@ -7,9 +7,7 @@
 ## conda needs to be installed in the singularity container for snakemake to run it (snakemake also needs to be installed i think)
 ## my container installs the fastqc conda environment and snakemake which seems to work better
 ## new notes: 
-CONDA_ENV_FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_conda-v0.12.1"
-CONDA_FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc_v_0.12.1_globalconda"
-FASTQC_SING = "docker://tbrunetti/functional_crispr_screen:fastqc-v0.12.1" 
+FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1" 
 FASTQC_CONDA = "envs/fastqc_env.yml"
 
 rule all:
@@ -21,7 +19,7 @@ rule run_pretrimming_fastqc:
     output:
         out_file = "give_me_fastqc_version.txt"
     singularity:
-        CONDA_FASTQC_SING
+        FASTQC_SING
     conda:
         FASTQC_CONDA
     shell:

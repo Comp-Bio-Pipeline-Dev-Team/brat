@@ -69,10 +69,10 @@ def get_args():
 ## functions
 ## dirname(__file__) gets the directory where this script (brat.py) is located
 def get_snake_path():
-    return pj(dirname(__file__), "workflow/toy_snakefile.smk")
+    return pj(dirname(__file__), "workflow/snakefile")
 
 def get_config_path():
-    return pj(dirname(__file__), "workflow/config_files/test_brat_config.yml")
+    return pj(dirname(__file__), "workflow/config_files/brat_config.yml")
 
 def get_profile_path():
     return pj(dirname(__file__), "workflow/profiles/default")
@@ -126,12 +126,9 @@ def create_config_file(config_path,
                      "picard_rrna_interval_list": args.ribosomal_int_list,
                      "cutadapt_params": SingleQuotedScalarString(args.extra_cutadapt_params),
                      "star_params": SingleQuotedScalarString(args.extra_star_params),
-                     "rsem_params": SingleQuotedScalarString(args.extra_rsem_params)}
-    
-    if args.run_rsem is True:
-        config_params["run_rsem"] = True
-    else:
-        config_params["run_rsem"] = False
+                     "rsem_params": SingleQuotedScalarString(args.extra_rsem_params),
+                     "run_rsem": True if args.run_rsem else False,
+                     "deployment_method": "singularity" if args.use_singularity else "conda"}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)

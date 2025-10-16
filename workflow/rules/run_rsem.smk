@@ -9,6 +9,8 @@ rule generate_rsem_index:
         rsem_index_dir = directory("reference_indices/rsem/")
     singularity:
         RSEM_SING
+    conda:
+        RSEM_CONDA
     params:
         rsem_index_name = ALIGN_INDEX_NAME,
         ref_directory = REF_DIR,
@@ -46,12 +48,15 @@ rule run_rsem_quantification:
         rsem_out_dir = directory(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"))
     singularity:
         RSEM_SING
+    conda:
+        RSEM_CONDA
     params:
         nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
         current_sample = lambda wc: wc.get("sample"),
         user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample")), ## need to check that this will pull the wildcard appropriately
         rsem_index_name = ALIGN_INDEX_NAME,
-        user_added_rsemParams = EXTRA_RSEM_PARAMS
+        user_added_rsemParams = EXTRA_RSEM_PARAMS,
+        software_log = SOFTWARE_LOG
     shell:
         """ 
         isEmpty={params.user_strandedness}
@@ -68,6 +73,9 @@ rule run_rsem_quantification:
             strandedness={params.user_strandedness}
             echo "User specified strandedness for {params.current_sample} is: ${{strandedness}}"
         fi
+        
+        ## getting rsem version for multiqc report
+        ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version)" ) >> {params.software_log}
 
         mkdir -p {output.rsem_out_dir}
 
