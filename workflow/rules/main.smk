@@ -14,15 +14,16 @@ rule run_pretrimming_fastqc:
         FASTQC_SING
     conda:
         FASTQC_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.fastqc1.log")
     params:
-        threads = 2,
-        software_log = SOFTWARE_LOG
+        threads = 2
     shell:
         """
         echo "running fastqc"
 
         ## getting fastqc version for multiqc report
-        ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version)" ) >> {params.software_log}
+        ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version)" ) > {log.software_log}
 
         mkdir {output.outDir}
 
@@ -45,16 +46,17 @@ rule run_pretrimming_multiqc:
         MULTIQC_SING
     conda:
         MULTIQC_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "multiqc1.log")
     params:
         outDir = OUT_DIR_NAME, ## this might need the forward slash at the end again 
-        multiqcFilename = "pretrimming_multiqc_report.html",
-        software_log = SOFTWARE_LOG
+        multiqcFilename = "pretrimming_multiqc_report.html"
     shell:
         """
         echo "running multiqc"
 
         ## getting multiqc version for multiqc report
-        ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version)" ) >> {params.software_log}
+        ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version)" ) > {log.software_log}
 
         multiqc {input.inDirs} --force -o {params.outDir} --filename {params.multiqcFilename}
         """
@@ -80,14 +82,14 @@ rule run_cutadapt:
         CUTADAPT_CONDA
     log:
         log = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.log"),
-        error = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err")
+        error = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err"),
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.cutadapt.log")
     params:
         adapter_threePrime = "AGATCGGAAGAG", ## do i need to put this in the config file?
         qualTrim = 30,
         minReadLen = 10,
         n_threads = 4, ## n_threads = cpus_per_task*2
-        user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS,
-        software_log = SOFTWARE_LOG
+        user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS
     shell:
         """
         totalScores=$( set +o pipefail; zcat < {input.inFiles[0]} | awk 'NR%4==0' | sed 100q | grep -o . | sort | uniq | wc -l )
@@ -103,7 +105,7 @@ rule run_cutadapt:
         fi
 
         ## getting cutadapt version for multiqc report
-        ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version)" ) >> {params.software_log}
+        ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version)" ) > {log.software_log}
 
         cutadapt -a {params.adapter_threePrime} \
                  -A {params.adapter_threePrime} \
@@ -126,6 +128,8 @@ use rule run_pretrimming_fastqc as run_posttrimming_fastqc with:
         inFiles = [pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz"), pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz")]
     output:
         outDir = directory(pj(OUT_DIR_NAME, "posttrimming_fastqc/{sample}/"))
+    log:
+        software_log = "tmp.brat/software_used/{sample}.fastqc2.log"
 
 
 ## running multiqc on samples posttrimming via cutadapt 
@@ -137,6 +141,8 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
                         sample=SAMPLE_LIST)
     output:
         outFile = pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html")
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "multiqc2.log")
     params:
         outDir = OUT_DIR_NAME,
         multiqcFilename = "posttrimming_multiqc_report.html"
@@ -192,7 +198,7 @@ rule generate_star_index:
         fastaFile = NEW_FASTA_PATH,
         annotFile = NEW_ANNOT_PATH
     output:
-        star_index_dir = directory("reference_indices/star/")
+        star_index_dir = directory("tmp.brat/reference_indices/star/")
     singularity:
         STAR_SING
     conda:
@@ -243,7 +249,7 @@ rule generate_star_index:
 rule run_star_alignment:
     input:
         pretrimming_multiqc_report = pj(OUT_DIR_NAME, "pretrimming_multiqc_report_data/multiqc_general_stats.txt"),
-        star_genome_index_dir = "reference_indices/star/",
+        star_genome_index_dir = "tmp.brat/reference_indices/star/",
         forwardTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz"),
         reverseTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"),
         annotFile = NEW_ANNOT_PATH
@@ -256,12 +262,13 @@ rule run_star_alignment:
         STAR_SING
     conda:
         STAR_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.star.log")
     params:
         input_read_length = READ_LENGTH,
         n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
         star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."), ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
-        user_added_starParams = EXTRA_STAR_PARAMS,
-        software_log = SOFTWARE_LOG
+        user_added_starParams = EXTRA_STAR_PARAMS
     shell:
         """
         ## have to redo read length calculation, maybe not the best? but idk what else to do 
@@ -277,7 +284,7 @@ rule run_star_alignment:
         fi 
 
         ## getting star version for multiqc report
-        ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version)" ) >> {params.software_log}
+        ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version)" ) > {log.software_log}
 
         mkdir -p {output.star_out_dir}
 
@@ -310,16 +317,17 @@ rule run_picard_collect_rna_seq:
         PICARD_SING
     conda:
         PICARD_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.picard.log")
     params:
         sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
         command = PICARD_CMD,
         jar_file = "/opt/picard-2.27.5/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
-        strandedness = "NONE",
-        software_log = SOFTWARE_LOG
+        strandedness = "NONE"
     shell:
         """
         ## get picard version for multiqc report
-        ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version)" ) >> {params.software_log}
+        ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version)" ) > {log.software_log}
 
         mkdir -p {params.sample_out_dir}
 

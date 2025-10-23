@@ -25,7 +25,7 @@ else:
 ## conda version of picard doesnt't need jar file specified, singularity does
 ## idk if putting the {params.jar_file} in the command here will work the way I want it to..
 if config["deployment_method"] == "singularity":
-    PICARD_CMD = "java -jar {params.jar_file}"
+    PICARD_CMD = "java -jar /opt/picard-2.27.5/picard.jar"
 else:
     PICARD_CMD = "picard"
 
@@ -44,7 +44,7 @@ PICARD_REFFLAT = config['picard_refFlat']
 PICARD_RRNA_INTERVAL = config['picard_rrna_interval_list']
 
 ## to move wanted genome index files for star, rsem, and picard into the pipeline's working directory so bind points dont break 
-REF_DIR = "user_reference_files"
+REF_DIR = "tmp.brat/user_reference_files"
 NEW_FASTA_PATH= pj(REF_DIR, basename(ALIGN_FASTA))
 NEW_ANNOT_PATH = pj(REF_DIR, basename(ALIGN_ANNOT))
 NEW_PICARD_REFFLAT = pj(REF_DIR, basename(PICARD_REFFLAT))
@@ -53,10 +53,11 @@ NEW_PICARD_RRNA_INTERVAL = pj(REF_DIR, basename(PICARD_RRNA_INTERVAL))
 READ_LENGTH = config['raw_seq_read_length']
 
 ## for rsem index generation 
-RSEM_INDEX_DIR = pj("reference_indices/rsem", ALIGN_INDEX_NAME)
+RSEM_INDEX_DIR = pj("tmp.brat/reference_indices/rsem", ALIGN_INDEX_NAME)
 
 ## to put software versions in a log file to reference in the multiqc report
-SOFTWARE_LOG = "tmp_software_used.log"
+## had to make individual log files for each software within their respective rules to avoid snakemake overwriting them
+SOFTWARE_LOG_DIR = "tmp.brat/software_used"
 
 
 sample_fp_dict = make_fp_dict(metadata_df=METADATA,
@@ -102,7 +103,10 @@ def pull_rawSeq_fps(wildcards):
 ## output file lists for rule all
 main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
                sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.fastqc1.log"),
+               sample=SAMPLE_LIST),
             pj(OUT_DIR_NAME, "pretrimming_multiqc_report.html"),
+            pj(SOFTWARE_LOG_DIR, "multiqc1.log"),
             expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz"),
                 sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"),
@@ -111,18 +115,27 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
                 sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err"),
                 sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.cutadapt.log"),
+               sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "posttrimming_fastqc/{sample}/"),
                     sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.fastqc2.log"),
+               sample=SAMPLE_LIST), 
             pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html"),
+            pj(SOFTWARE_LOG_DIR, "multiqc2.log"),
             NEW_FASTA_PATH,
             NEW_ANNOT_PATH,
             NEW_PICARD_RRNA_INTERVAL,
             NEW_PICARD_REFFLAT,
-            "reference_indices/star/",
+            "tmp.brat/reference_indices/star/",
             expand(pj(OUT_DIR_NAME, "star_alignment/{sample}/"),
                 sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.star.log"),
+               sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt"),
                 sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.picard.log"),
+               sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize.txt"),
                 sample=SAMPLE_LIST),
             expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize_histogram.pdf"),
@@ -131,9 +144,11 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
             pj(OUT_DIR_NAME, "picard/allSample_picard_insertSize.tsv"),
             pj(OUT_DIR_NAME, "star_alignment/allSample_star_logs.tsv")]
 
-rsem_out = ["reference_indices/rsem/",
+rsem_out = ["tmp.brat/reference_indices/rsem/",
             expand(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"),
-               sample=SAMPLE_LIST)]
+               sample=SAMPLE_LIST),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log"),
+               sample=SAMPLE_LIST),]
 
 ## main workflow is always included 
 include: "rules/main.smk"

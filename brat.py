@@ -114,7 +114,7 @@ def create_config_file(config_path,
     #symlink_loc = pj(dirname(__file__), Path(args.raw_seq_dir).name)
     symlink_loc = pj(os.getcwd(), Path(args.raw_seq_dir).name)
 
-    config_params = {"raw_seq_in": symlink_loc,
+    config_params = {"raw_seq_in": args.raw_seq_dir,
                      "metadata_file": args.metadata_file,
                      "out_dir": args.out_dir_name,
                      "align_to_fasta": args.genome_fasta,
@@ -161,7 +161,7 @@ def assemble_snake_command(snake_path,
 def main():
     args = get_args()
 
-    symlink_raw_seqs(args)
+    ##symlink_raw_seqs(args)
     
     create_config_file(get_config_path(),
                        args)

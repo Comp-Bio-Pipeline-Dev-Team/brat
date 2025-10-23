@@ -6,7 +6,7 @@ rule generate_rsem_index:
         fastaFile = NEW_FASTA_PATH,
         annotFile = NEW_ANNOT_PATH
     output:
-        rsem_index_dir = directory("reference_indices/rsem/")
+        rsem_index_dir = directory("tmp.brat/reference_indices/rsem/")
     singularity:
         RSEM_SING
     conda:
@@ -42,7 +42,7 @@ rule generate_rsem_index:
 rule run_rsem_quantification:
     input:
         aligned_transcriptBam = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam"),
-        rsem_index_dir = "reference_indices/rsem/",
+        rsem_index_dir = "tmp.brat/reference_indices/rsem/",
         picard_metrics_file = pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv")
     output:
         rsem_out_dir = directory(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"))
@@ -50,13 +50,14 @@ rule run_rsem_quantification:
         RSEM_SING
     conda:
         RSEM_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log")
     params:
         nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
         current_sample = lambda wc: wc.get("sample"),
         user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample")), ## need to check that this will pull the wildcard appropriately
         rsem_index_name = ALIGN_INDEX_NAME,
-        user_added_rsemParams = EXTRA_RSEM_PARAMS,
-        software_log = SOFTWARE_LOG
+        user_added_rsemParams = EXTRA_RSEM_PARAMS
     shell:
         """ 
         isEmpty={params.user_strandedness}
@@ -75,7 +76,7 @@ rule run_rsem_quantification:
         fi
         
         ## getting rsem version for multiqc report
-        ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version)" ) >> {params.software_log}
+        ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version)" ) > {log.software_log}
 
         mkdir -p {output.rsem_out_dir}
 
