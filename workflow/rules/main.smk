@@ -23,7 +23,7 @@ rule run_pretrimming_fastqc:
         echo "running fastqc"
 
         ## getting fastqc version for multiqc report
-        ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version)" ) > {log.software_log}
+        ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         mkdir {output.outDir}
 
@@ -56,7 +56,7 @@ rule run_pretrimming_multiqc:
         echo "running multiqc"
 
         ## getting multiqc version for multiqc report
-        ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version)" ) > {log.software_log}
+        ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         multiqc {input.inDirs} --force -o {params.outDir} --filename {params.multiqcFilename}
         """
@@ -105,7 +105,7 @@ rule run_cutadapt:
         fi
 
         ## getting cutadapt version for multiqc report
-        ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version)" ) > {log.software_log}
+        ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         cutadapt -a {params.adapter_threePrime} \
                  -A {params.adapter_threePrime} \
@@ -284,7 +284,7 @@ rule run_star_alignment:
         fi 
 
         ## getting star version for multiqc report
-        ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version)" ) > {log.software_log}
+        ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         mkdir -p {output.star_out_dir}
 
@@ -322,12 +322,12 @@ rule run_picard_collect_rna_seq:
     params:
         sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
         command = PICARD_CMD,
-        jar_file = "/opt/picard-2.27.5/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
+        jar_file = "/opt/picard/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
         strandedness = "NONE"
     shell:
         """
         ## get picard version for multiqc report
-        ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version)" ) > {log.software_log}
+        ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         mkdir -p {params.sample_out_dir}
 

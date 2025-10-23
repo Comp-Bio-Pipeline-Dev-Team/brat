@@ -14,18 +14,25 @@ METADATA = pd.read_csv(config['metadata_file'], sep='\t')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
 
 ## allows for output directory name to be specified by user
-## otherwise defaults to "bulk_RNAseq_out"
+## otherwise defaults to "brat_out"
 if config["out_dir"] != "brat_out":
     OUT_DIR_NAME = "{}.{}".format(config["out_dir"], "brat_out")
 else:
     OUT_DIR_NAME = config["out_dir"]
 
+## pull in path to multiqc config file from config
+MULTIQC_CONFIG_PATH = config['multiqc_config_file']
+MODULE_LIST = ["pretrimming_fastqc",
+               "posttrimming_fastqc",
+               "cutadapt",
+               "star_alignment",
+               "picard"]
 
 ## allows flexibility in the picard command between conda and singularity deployments
 ## conda version of picard doesnt't need jar file specified, singularity does
-## idk if putting the {params.jar_file} in the command here will work the way I want it to..
+## idk if putting the {params.jar_file} in the command here will work the way I want it to.. update: it didnt
 if config["deployment_method"] == "singularity":
-    PICARD_CMD = "java -jar /opt/picard-2.27.5/picard.jar"
+    PICARD_CMD = "java -jar /opt/picard/picard.jar"
 else:
     PICARD_CMD = "picard"
 
@@ -79,7 +86,7 @@ UBUNTU_SING = "docker://madiapgar/bulk_rna_seq:ubuntu-v24.04"
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
 MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.30"
 CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
-STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.10b"
+STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.11b"
 RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"
 PICARD_SING = "docker://madiapgar/bulk_rna_seq:picard-v2.27.5"
 
@@ -142,20 +149,23 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
                 sample=SAMPLE_LIST),
             pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv"),
             pj(OUT_DIR_NAME, "picard/allSample_picard_insertSize.tsv"),
-            pj(OUT_DIR_NAME, "star_alignment/allSample_star_logs.tsv")]
+            pj(OUT_DIR_NAME, "star_alignment/allSample_star_logs.tsv"),
+            pj(OUT_DIR_NAME, "brat_run_report.html")]
 
 rsem_out = ["tmp.brat/reference_indices/rsem/",
             expand(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"),
                sample=SAMPLE_LIST),
             expand(pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log"),
-               sample=SAMPLE_LIST),]
+               sample=SAMPLE_LIST)]
 
 ## main workflow is always included 
 include: "rules/main.smk"
+include: "rules/report.smk"
 
 ## conditionally include rsem rules based on user input in config file (True/False, default will be False)
 if config['run_rsem']:
     main_out.append(rsem_out)
+    MODULE_LIST.append("rsem_quantification")
     include: "rules/run_rsem.smk"
 
 rule all:

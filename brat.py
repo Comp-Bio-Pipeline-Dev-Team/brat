@@ -74,6 +74,9 @@ def get_snake_path():
 def get_config_path():
     return pj(dirname(__file__), "workflow/config_files/brat_config.yml")
 
+def get_multiqc_config_path():
+    return pj(dirname(__file__), "workflow/config_files/multiqc_config.yml")
+
 def get_profile_path():
     return pj(dirname(__file__), "workflow/profiles/default")
 
@@ -90,29 +93,28 @@ def move_workflow_profile(profile_path,
         print("The specified profile path does not exist or is a directory, please check that your input is a .yaml file and try again")
         exit()
 
+## NOTE!!: we don't need to symlink raw seqs directory anymore bc singularity can find anything relative to where the script is run from
 ## symlinking raw seqs directory to working directory of pipeline so bind points dont break 
-def symlink_raw_seqs(args):
-    if exists(args.raw_seq_dir) and os.path.isdir(args.raw_seq_dir):
-        outside_dir = args.raw_seq_dir
-        #wanted_symlink = pj(dirname(__file__), Path(outside_dir).name)
-        wanted_symlink = pj(os.getcwd(), Path(outside_dir).name)
-        if not exists(wanted_symlink):
-            os.symlink(outside_dir, wanted_symlink,
-                       target_is_directory=True)
-            print(f"symlink created at {wanted_symlink}")
-    else:
-        print("--raw_seq_dir does not exist or is not a directory, please check your input and try again")
-        exit()
+##def symlink_raw_seqs(args):
+##    if exists(args.raw_seq_dir) and os.path.isdir(args.raw_seq_dir):
+##        outside_dir = args.raw_seq_dir
+##        #wanted_symlink = pj(dirname(__file__), Path(outside_dir).name)
+##        wanted_symlink = pj(os.getcwd(), Path(outside_dir).name)
+##        if not exists(wanted_symlink):
+##            os.symlink(outside_dir, wanted_symlink,
+##                       target_is_directory=True)
+##            print(f"symlink created at {wanted_symlink}")
+##    else:
+##        print("--raw_seq_dir does not exist or is not a directory, please check your input and try again")
+##        exit()
 
 
 def create_config_file(config_path,
+                       multiqc_config_path,
                        args):
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
-
-    #symlink_loc = pj(dirname(__file__), Path(args.raw_seq_dir).name)
-    symlink_loc = pj(os.getcwd(), Path(args.raw_seq_dir).name)
 
     config_params = {"raw_seq_in": args.raw_seq_dir,
                      "metadata_file": args.metadata_file,
@@ -128,7 +130,8 @@ def create_config_file(config_path,
                      "star_params": SingleQuotedScalarString(args.extra_star_params),
                      "rsem_params": SingleQuotedScalarString(args.extra_rsem_params),
                      "run_rsem": True if args.run_rsem else False,
-                     "deployment_method": "singularity" if args.use_singularity else "conda"}
+                     "deployment_method": "singularity" if args.use_singularity else "conda",
+                     "multiqc_config_file": multiqc_config_path}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -160,10 +163,9 @@ def assemble_snake_command(snake_path,
 
 def main():
     args = get_args()
-
-    ##symlink_raw_seqs(args)
     
     create_config_file(get_config_path(),
+                       get_multiqc_config_path(),
                        args)
     
     move_workflow_profile(get_profile_path(),

@@ -76,7 +76,7 @@ rule run_rsem_quantification:
         fi
         
         ## getting rsem version for multiqc report
-        ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version)" ) > {log.software_log}
+        ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         mkdir -p {output.rsem_out_dir}
 
