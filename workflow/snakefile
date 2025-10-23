@@ -26,7 +26,8 @@ MODULE_LIST = ["pretrimming_fastqc",
                "posttrimming_fastqc",
                "cutadapt",
                "star_alignment",
-               "picard"]
+               "picard/collect_rna_seq",
+               "picard/collect_insert_size"]
 
 ## allows flexibility in the picard command between conda and singularity deployments
 ## conda version of picard doesnt't need jar file specified, singularity does
@@ -139,13 +140,13 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
                 sample=SAMPLE_LIST),
             expand(pj(SOFTWARE_LOG_DIR, "{sample}.star.log"),
                sample=SAMPLE_LIST),
-            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt"),
+            expand(pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/{sample}.picard.metrics.txt"),
                 sample=SAMPLE_LIST),
             expand(pj(SOFTWARE_LOG_DIR, "{sample}.picard.log"),
                sample=SAMPLE_LIST),
-            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize.txt"),
+            expand(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize.txt"),
                 sample=SAMPLE_LIST),
-            expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize_histogram.pdf"),
+            expand(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize_histogram.pdf"),
                 sample=SAMPLE_LIST),
             pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv"),
             pj(OUT_DIR_NAME, "picard/allSample_picard_insertSize.tsv"),

@@ -12,7 +12,7 @@ rule create_report:
     singularity:
         MULTIQC_SING
     conda:
-        MULTIQC_CONDA_ENV
+        MULTIQC_CONDA
     params:
         softwareLogs = SOFTWARE_LOG_DIR,
         outDir = OUT_DIR_NAME,

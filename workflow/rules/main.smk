@@ -41,7 +41,8 @@ rule run_pretrimming_multiqc:
                          sample=SAMPLE_LIST)
     output:
         outFile = pj(OUT_DIR_NAME, "pretrimming_multiqc_report.html"),
-        pretrimming_multiqc_stats = pj(OUT_DIR_NAME, "pretrimming_multiqc_report_data/multiqc_general_stats.txt")
+        pretrimming_multiqc_stats = pj(OUT_DIR_NAME, "pretrimming_multiqc_report_data/multiqc_general_stats.txt"),
+        outDir = directory(pj(OUT_DIR_NAME, "pretrimming_multiqc_report_data/"))
     singularity:
         MULTIQC_SING
     conda:
@@ -75,7 +76,8 @@ rule run_cutadapt:
         inFiles = pull_rawSeq_fps
     output:
         forwardTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R1_trimmed.fastq.gz"),
-        reverseTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz")
+        reverseTrimmed = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_R2_trimmed.fastq.gz"),
+        cutadapt_dir = directory(pj(OUT_DIR_NAME, "cutadapt/{sample}/"))
     singularity:
         CUTADAPT_SING
     conda:
@@ -140,7 +142,8 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
         inDirs = expand(pj(OUT_DIR_NAME, "posttrimming_fastqc/{sample}/"),
                         sample=SAMPLE_LIST)
     output:
-        outFile = pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html")
+        outFile = pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html"),
+        outDir = directory(pj(OUT_DIR_NAME, "posttrimming_multiqc_report_data/"))
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "multiqc2.log")
     params:
@@ -312,7 +315,8 @@ rule run_picard_collect_rna_seq:
         refFlat_file = NEW_PICARD_REFFLAT,
         riboIntList_file = NEW_PICARD_RRNA_INTERVAL
     output:
-        collect_rnaSeq_file = pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt")
+        collect_rnaSeq_file = pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/{sample}.picard.metrics.txt"),
+        collect_rnaSeq_dir = directory(pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/"))
     singularity:
         PICARD_SING
     conda:
@@ -320,7 +324,7 @@ rule run_picard_collect_rna_seq:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.picard.log")
     params:
-        sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
+        sample_out_dir = pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/"),
         command = PICARD_CMD,
         jar_file = "/opt/picard/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
         strandedness = "NONE"
@@ -347,16 +351,17 @@ rule run_picard_collect_insert_size:
     input:
         aligned_coordBam = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam")
     output:
-        insertSize_file = pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize.txt"),
-        insertSize_histogram = pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize_histogram.pdf")
+        insertSize_file = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize.txt"),
+        insertSize_histogram = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize_histogram.pdf"),
+        insertSize_dir = directory(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/"))
     singularity:
         PICARD_SING
     conda:
         PICARD_CONDA
     params:
-        sample_out_dir = pj(OUT_DIR_NAME, "picard/{sample}/"),
+        sample_out_dir = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/"),
         command = PICARD_CMD,
-        jar_file = "/opt/picard-2.27.5/picard.jar" ## this is in the container!!
+        jar_file = "/opt/picard/picard.jar" ## this is in the container!!
     shell:
         """
         # check if outDir exists; if it doesn't it will make the output directory
@@ -385,9 +390,9 @@ rule run_picard_collect_insert_size:
 ## i should probably name this rule something different but i cant think of anything right now
 rule calculate_strandedness:
     input:
-        collect_rnaSeq_files = expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.metrics.txt"),
+        collect_rnaSeq_files = expand(pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/{sample}.picard.metrics.txt"),
                                       sample=SAMPLE_LIST),
-        collect_insertSize_files = expand(pj(OUT_DIR_NAME, "picard/{sample}/{sample}.picard.insertSize.txt"),
+        collect_insertSize_files = expand(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize.txt"),
                                           sample=SAMPLE_LIST),
         star_log_files = expand(pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Log.final.out"),
                                 sample=SAMPLE_LIST)

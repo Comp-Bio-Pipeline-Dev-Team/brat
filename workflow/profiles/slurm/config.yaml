@@ -92,3 +92,9 @@ set-resources:
         cpus_per_task: 3 ## 10/3.75 = cpus_per_task
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/rsem_quantification/%J.log' '--error=logs/slurm/rsem_quantification/%J.err'"
+    create_report:
+        runtime: 60 
+        mem: "1GB" 
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/brat_report/%J.log' '--error=logs/slurm/brat_report/%J.err'"
