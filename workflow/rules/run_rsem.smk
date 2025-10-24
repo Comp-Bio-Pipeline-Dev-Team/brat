@@ -43,7 +43,7 @@ rule run_rsem_quantification:
     input:
         aligned_transcriptBam = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam"),
         rsem_index_dir = "tmp.brat/reference_indices/rsem/",
-        picard_metrics_file = pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv")
+        picard_metrics_file = pj(OUT_DIR_NAME, "picard_collectRnaSeq/allSample_picard_metrics.tsv")
     output:
         rsem_out_dir = directory(pj(OUT_DIR_NAME, "rsem_quantification/{sample}/"))
     singularity:

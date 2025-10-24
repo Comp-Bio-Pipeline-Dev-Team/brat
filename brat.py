@@ -75,7 +75,7 @@ def get_config_path():
     return pj(dirname(__file__), "workflow/config_files/brat_config.yml")
 
 def get_multiqc_config_path():
-    return pj(dirname(__file__), "workflow/config_files/multiqc_config.yml")
+    return pj(dirname(__file__), "workflow/config_files/multiqc_config.yaml")
 
 def get_profile_path():
     return pj(dirname(__file__), "workflow/profiles/default")

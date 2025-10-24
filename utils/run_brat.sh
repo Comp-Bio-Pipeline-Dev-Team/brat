@@ -3,16 +3,9 @@
 # script to run brat (bulk rna-seq analysis tool)
 
 ## the python script needs to be verified as an executable!:
-chmod +x brat.py
 ## changing script name to just "brat" for ease of use (and bc its fun)
-mv brat.py brat
-
 ## also need to add path to folder where script lives to my global path like so:
-echo 'export PATH=/scratch/alpine/${USER}/test_snake_w_slurm/:$PATH' >> ~/.bashrc
-##bratPath=$(find .  -maxdepth 1 -type d -iname "test_snake_w_slurm" -exec realpath {} \;)
-#export PATH=${bratPath}/:$PATH
-##echo $PATH
-source ~/.bashrc
+chmod +x brat/brat.py && mv brat/brat.py brat/brat && echo 'export PATH=/scratch/alpine/${USER}/brat/:$PATH' >> ~/.bashrc && source ~/.bashrc
 
 ## actual command
 brat \

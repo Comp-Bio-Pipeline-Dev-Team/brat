@@ -315,8 +315,8 @@ rule run_picard_collect_rna_seq:
         refFlat_file = NEW_PICARD_REFFLAT,
         riboIntList_file = NEW_PICARD_RRNA_INTERVAL
     output:
-        collect_rnaSeq_file = pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/{sample}.picard.metrics.txt"),
-        collect_rnaSeq_dir = directory(pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/"))
+        collect_rnaSeq_file = pj(OUT_DIR_NAME, "picard_collectRnaSeq/{sample}/{sample}.picard.metrics.txt"),
+        collect_rnaSeq_dir = directory(pj(OUT_DIR_NAME, "picard_collectRnaSeq/{sample}/"))
     singularity:
         PICARD_SING
     conda:
@@ -324,16 +324,15 @@ rule run_picard_collect_rna_seq:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.picard.log")
     params:
-        sample_out_dir = pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/"),
+        sample_out_dir = pj(OUT_DIR_NAME, "picard_collectRnaSeq/{sample}/"),
         command = PICARD_CMD,
-        jar_file = "/opt/picard/picard.jar", ## tell it to look in the container for this, change permissions of jar file in container (exec java -jar picard.jar in the container)
         strandedness = "NONE"
     shell:
         """
         ## get picard version for multiqc report
         ( echo -n "picard: "; printf "\"%s\"\n" "$({params.command} CollectRnaSeqMetrics --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
-        mkdir -p {params.sample_out_dir}
+        mkdir -p {output.collect_rnaSeq_dir}
 
         {params.command} CollectRnaSeqMetrics \
              I={input.aligned_coordBam} \
@@ -351,28 +350,19 @@ rule run_picard_collect_insert_size:
     input:
         aligned_coordBam = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Aligned.sortedByCoord.out.bam")
     output:
-        insertSize_file = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize.txt"),
-        insertSize_histogram = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize_histogram.pdf"),
-        insertSize_dir = directory(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/"))
+        insertSize_file = pj(OUT_DIR_NAME, "picard_collectInsertSize/{sample}/{sample}.picard.insertSize.txt"),
+        insertSize_histogram = pj(OUT_DIR_NAME, "picard_collectInsertSize/{sample}/{sample}.picard.insertSize_histogram.pdf"),
+        insertSize_dir = directory(pj(OUT_DIR_NAME, "picard_collectInsertSize/{sample}/"))
     singularity:
         PICARD_SING
     conda:
         PICARD_CONDA
     params:
-        sample_out_dir = pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/"),
-        command = PICARD_CMD,
-        jar_file = "/opt/picard/picard.jar" ## this is in the container!!
+        sample_out_dir = pj(OUT_DIR_NAME, "picard_collectInsertSize/{sample}/"),
+        command = PICARD_CMD
     shell:
         """
-        # check if outDir exists; if it doesn't it will make the output directory
-        ## idk if i need to do this or not 
-        if [ -d {params.sample_out_dir} ];
-        then
-            echo "Directory {params.sample_out_dir} exists. Proceeding with analysis."
-        else
-            echo "Directory {params.sample_out_dir} does not exist. Generating directory..."
-            mkdir -p {params.sample_out_dir}
-        fi
+        mkdir -p {output.insertSize_dir}
 
         {params.command} CollectInsertSizeMetrics \
              I={input.aligned_coordBam} \
@@ -390,19 +380,19 @@ rule run_picard_collect_insert_size:
 ## i should probably name this rule something different but i cant think of anything right now
 rule calculate_strandedness:
     input:
-        collect_rnaSeq_files = expand(pj(OUT_DIR_NAME, "picard/collect_rna_seq/{sample}/{sample}.picard.metrics.txt"),
+        collect_rnaSeq_files = expand(pj(OUT_DIR_NAME, "picard_collectRnaSeq/{sample}/{sample}.picard.metrics.txt"),
                                       sample=SAMPLE_LIST),
-        collect_insertSize_files = expand(pj(OUT_DIR_NAME, "picard/collect_insert_size/{sample}/{sample}.picard.insertSize.txt"),
+        collect_insertSize_files = expand(pj(OUT_DIR_NAME, "picard_collectInsertSize/{sample}/{sample}.picard.insertSize.txt"),
                                           sample=SAMPLE_LIST),
         star_log_files = expand(pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Log.final.out"),
                                 sample=SAMPLE_LIST)
     output:
-        allSample_picard_strandedness = pj(OUT_DIR_NAME, "picard/allSample_picard_metrics.tsv"),
-        allSample_picard_insertSize = pj(OUT_DIR_NAME, "picard/allSample_picard_insertSize.tsv"),
+        allSample_picard_strandedness = pj(OUT_DIR_NAME, "picard_collectRnaSeq/allSample_picard_metrics.tsv"),
+        allSample_picard_insertSize = pj(OUT_DIR_NAME, "picard_collectInsertSize/allSample_picard_insertSize.tsv"),
         allSample_star_logs = pj(OUT_DIR_NAME, "star_alignment/allSample_star_logs.tsv")
     params:
-        picard_metrics_pattern = pj(OUT_DIR_NAME, "picard/*/*.picard.metrics.txt"),
-        picard_insertSize_pattern = pj(OUT_DIR_NAME, "picard/*/*.picard.insertSize.txt"),
+        picard_metrics_pattern = pj(OUT_DIR_NAME, "picard_collectRnaSeq/*/*.picard.metrics.txt"),
+        picard_insertSize_pattern = pj(OUT_DIR_NAME, "picard_collectInsertSize/*/*.picard.insertSize.txt"),
         star_logs_pattern = pj(OUT_DIR_NAME, "star_alignment/*/*.Log.final.out")
     run:
         picard_calculate_strandedness(file_pattern=params.picard_metrics_pattern,

@@ -24,7 +24,7 @@ rule create_report:
         cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_software_used.log
 
         ## insert software used into multiqc config file via yq
-        yq eval -i '.software_versions = loadstr("{params.outDir}/brat_software_used.log")' {params.multiqc_config}
+        yq eval -i -y '.software_versions = loadstr("{params.outDir}/brat_software_used.log")' {params.multiqc_config}
 
         multiqc {input.moduleDirs} {input.multiqcDirs} --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
         """
