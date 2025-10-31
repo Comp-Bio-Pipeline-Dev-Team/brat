@@ -93,6 +93,16 @@ def move_workflow_profile(profile_path,
         print("The specified profile path does not exist or is a directory, please check that your input is a .yaml file and try again")
         exit()
 
+## attempting to move multiqc config file to tmp.brat of current working directory so singularity can find it
+def move_multiqc_config(multiqc_config_path):
+    multiqc_config_src = multiqc_config_path
+    multiqc_config_dest = pj(os.getcwd(), "tmp.brat/multiqc_config.yaml")
+    if not exists(pj(os.getcwd(), "tmp.brat")):
+        os.makedirs(pj(os.getcwd(), "tmp.brat"))
+    copy_multiqc_config = ["cp", multiqc_config_src, multiqc_config_dest]
+    subprocess.run(copy_multiqc_config)
+    print(f"multiqc config file copied to {multiqc_config_dest}")
+
 ## NOTE!!: we don't need to symlink raw seqs directory anymore bc singularity can find anything relative to where the script is run from
 ## symlinking raw seqs directory to working directory of pipeline so bind points dont break 
 ##def symlink_raw_seqs(args):
@@ -110,11 +120,14 @@ def move_workflow_profile(profile_path,
 
 
 def create_config_file(config_path,
-                       multiqc_config_path,
                        args):
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
+
+    ## trying to set multiqc config path to tmp.brat so singularity can find it 
+    ## and so snakemake doesnt lose its mind about the absolute path 
+    multiqc_config_dest = "tmp.brat/multiqc_config.yaml"
 
     config_params = {"raw_seq_in": args.raw_seq_dir,
                      "metadata_file": args.metadata_file,
@@ -131,7 +144,7 @@ def create_config_file(config_path,
                      "rsem_params": SingleQuotedScalarString(args.extra_rsem_params),
                      "run_rsem": True if args.run_rsem else False,
                      "deployment_method": "singularity" if args.use_singularity else "conda",
-                     "multiqc_config_file": multiqc_config_path}
+                     "multiqc_config_file": multiqc_config_dest}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -163,9 +176,10 @@ def assemble_snake_command(snake_path,
 
 def main():
     args = get_args()
+
+    move_multiqc_config(get_multiqc_config_path())
     
     create_config_file(get_config_path(),
-                       get_multiqc_config_path(),
                        args)
     
     move_workflow_profile(get_profile_path(),

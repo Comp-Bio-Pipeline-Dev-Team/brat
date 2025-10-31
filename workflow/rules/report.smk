@@ -17,14 +17,16 @@ rule create_report:
         softwareLogs = SOFTWARE_LOG_DIR,
         outDir = OUT_DIR_NAME,
         multiqcFilename = "brat_run_report.html",
-        multiqc_config = MULTIQC_CONFIG_PATH ## workflow/config_files/multiqc_config.yaml
+        multiqc_config = MULTIQC_CONFIG_PATH
     shell:
         """
         ## pull all unique entries from log files to create software used log for multiqc
-        cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_software_used.log
-
+        ##cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_software_used.log
         ## insert software used into multiqc config file via yq
-        yq eval -i -y '.software_versions = loadstr("{params.outDir}/brat_software_used.log")' {params.multiqc_config}
+        ##yq eval -i '.software_versions = loadstr("{params.outDir}/brat_software_used.log")' {params.multiqc_config}
 
-        multiqc {input.moduleDirs} {input.multiqcDirs} --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
+        ## new way (a lot less code) - create a yaml file with software versions for multiqc to read directly
+        cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_mqc_versions.yml
+
+        multiqc {input.moduleDirs} {input.multiqcDirs} {params.outDir}/brat_mqc_versions.yml --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
         """

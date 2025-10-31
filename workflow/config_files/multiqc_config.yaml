@@ -5,6 +5,22 @@ fn_ignore_paths:
 
 fn_clean_sample_names: true
 
+disable_version_detection: true
+
+##show_analysis_paths: true
+##show_analysis_time: true
+
+report_header_info:
+  - Analysis Run: "brat (Bulk Rna-seq Analysis Tool)"
+  - Contact Email: "madison.apgar@cuanschutz.edu"
+  - Department: "Microbiology and Immunology"
+  - GitHub Repository: "https://github.com/Comp-Bio-Pipeline-Dev-Team/bulk_rna_seq"
+
+title: "brat run report"
+subtitle: "a detailed report of all analysis run" 
+intro_text: "i am some intro text that madi will eventually think of"
+report_comment: "a comment about this report :)"
+
 table_sample_merge:
   "(R1: untrimmed)": "_R1_001"
   "(R2: untrimmed)": "_R2_001"
@@ -26,3 +42,14 @@ module_order:
   - star
   - picard
   - rsem
+
+
+section_comments:
+  general_stats: "general info about your raw/trimmed sequences"
+  fastqc_raw_reads: "quality control of raw sequences"
+  cutadapt: "trimming of raw sequences"
+  fastqc_trimmed_reads: "quality control of trimmed reads"
+  star: "sequence alignment to a reference genome to generate gene counts"
+  picard: "gathers information on the kinds of regions your sequences aligned to"
+  rsem: "alternate method of sequence alignment/quantification that accounts for shorter read lengths"
+  multiqc_software_versions: "software versions of all tools used in this analysis"
