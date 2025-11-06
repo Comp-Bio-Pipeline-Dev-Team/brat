@@ -1,7 +1,12 @@
 force: true
 
+## i think the past multiqc reports were causing issues with the overal report so excluding them
 fn_ignore_paths:
   - "*/star_alignment/*/*._STARpass1"
+  - "*/pretrimming_multiqc_report.html"
+  - "*/posttrimming_multiqc_report.html"
+  - "*/pretrimming_multiqc_report_data"
+  - "*/posttrimming_multiqc_report_data"
 
 fn_clean_sample_names: true
 
@@ -22,23 +27,24 @@ intro_text: "i am some intro text that madi will eventually think of"
 report_comment: "a comment about this report :)"
 
 table_sample_merge:
-  "(R1: untrimmed)": "_R1_001"
-  "(R2: untrimmed)": "_R2_001"
-  "(R1: trimmed)": "_R1"
-  "(R2: trimmed)": "_R2"
+  - sp: '_R[12](?:_001)?_fastqc'
+    rp: ' (untrimmed)'
+  - sp: '_R[12]_trimmed_fastqc'
+    rp: ' (trimmed)'
 
 module_order:
   - fastqc:
       name: "FastQC (raw reads)"
       anchor: "fastqc_raw_reads"
-      path_filters: 
-        - "*_001_fastqc.zip"
+      path_filters:
+        - "*_R[12]_001_fastqc.zip"
+        - "*_R[12]_fastqc.zip"
   - cutadapt
   - fastqc:
       name: "FastQC (trimmed reads)"
       anchor: "fastqc_trimmed_reads"
       path_filters: 
-        - "*_trimmed_fastqc.zip"
+        - "*_R[12]_trimmed_fastqc.zip"
   - star
   - picard
   - rsem
