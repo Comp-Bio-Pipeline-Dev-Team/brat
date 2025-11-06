@@ -1,8 +1,10 @@
 force: true
 
-## i think the past multiqc reports were causing issues with the overal report so excluding them - they weren't i figured it out
+## i think the past multiqc reports were causing issues with the overal report so excluding them - they were 
 fn_ignore_paths:
   - "*/star_alignment/*/*._STARpass1"
+  - "*/pretrimming_multiqc_report*"
+  - "*/posttrimming_multiqc_report*"
 
 fn_clean_sample_names: true
 
@@ -16,7 +18,7 @@ report_header_info:
 
 title: "brat run report"
 subtitle: "a detailed report of all analysis run" 
-intro_text: "i am some intro text that madi will eventually think of. see the project on [github](https://github.com/Comp-Bio-Pipeline-Dev-Team/bulk_rna_seq)"
+intro_text: "i am some intro text that madi will eventually think of"
 report_comment: "a comment about this report :)"
 
 ## added regex for sample merging to account for different delimiters, captialization, and presence/absence of _001
@@ -51,33 +53,100 @@ module_order:
 
 section_comments:
   general_stats: >
-    "here you want to check that the raw quality of the sequencing reads looks good, 
+    here you want to check that the raw quality of the sequencing reads looks good, 
     samples to have even read representation, 
     the average and median read lengths to be the same, 
     and for both strands per sample to be evenly sequenced. 
-    read duplication is commonly high in bulk RNA-seq data, so don't be alarmed by that."
+    read duplication is commonly high in bulk RNA-seq data, so don't be alarmed by that.
   fastqc_raw_reads: >
-    "here you want to check that base quality/confidence and average sequence quality have high Phred scores,
+    here you want to check that base quality/confidence and average sequence quality have high Phred scores,
     (in the green section). the max Phred score is 38-40 depending on the chemistry color used in Illumina sequencing.
-    adapter content will be flagged here since this is prior to trimming."
-  cutadapt: "trimming of raw sequences"
+    adapter content will be flagged here since this is prior to trimming.
+    command used for fastqc on raw/trimmed reads:
+
+    ```bash
+    fastqc inFiles -o outDir --threads n_threads
+    ```
+  cutadapt: >
+    trimming of raw sequences
+    command used for cutadapt trimming:
+
+    ```bash
+    cutadapt -a adapter_threePrime \
+             -A adapter_threePrime \
+             chemistryFlag \
+             --minimum-length=minReadLen \
+             -j n_threads \
+             --pair-filter=any \
+             -o forwardTrimmed \
+             -p reverseTrimmed \
+             forward reverse>log \
+             2>error
+    ```
   fastqc_trimmed_reads: >
-    "here you want to check that post-trimming base quality/confidence and average sequence quality have 
+    here you want to check that post-trimming base quality/confidence and average sequence quality have 
     higher Phred scores (closer to 38-40) than pre-trimming, and that adapter content has been removed. 
-    you'll also want to check your samples for overrepresented sequences and investigate any that are found."
+    you'll also want to check your samples for overrepresented sequences and investigate any that are found.
   star: >
-    "here you want to check that the percentage of uniquely mapped reads is high (ideally >70%),
+    here you want to check that the percentage of uniquely mapped reads is high (ideally >70%),
     and that the percentage of reads mapped to multiple loci is low (ideally <15%).
     if you have a lot of reads that didn't map at all, you may want to investigate further and 
-    rerun alignment with optimization parameters. if your percentage of uniquely mapped reads is still low,
+    rerun alignment with optimization parameters such as:
+
+    ```bash
+    --outSAMunmapped Within KeepPairs \
+    --outReadsUnmapped Fastx \
+    --outFilterScoreMinOverLread 0.20 \ ## adjust as needed, lower values are less stringent (+/- 0.10)
+    --outFilterMatchNminOverLread 0.20 ## must match the above value
+    ```
+    if your percentage of uniquely mapped reads is still low,
     your reads may be of low quality, fragmented, or there may be contamination in your samples. you can also rerun
-    the alignment with rsem instead of star to see if that improves alignment/quantification."
+    the alignment with rsem instead of star to see if that improves alignment/quantification (include `--run_rsem` flag).
+    command used for star alignment:
+
+    ```bash
+    STAR --runMode alignReads \
+         --runThreadN n_threads \
+         --genomeDir star_genome_index_dir \
+         --readFilesCommand zcat \
+         -sjdbGTFfile annotFile \
+         --readFilesIn forwardTrimmed reverseTrimmed \
+         --outFileNamePrefix star_sample_prefix \ ## default is gene_id 
+         --outSAMtype BAM SortedByCoordinate \
+         --quantMode TranscriptomeSAM GeneCounts \
+         --twopassMode Basic \
+         --sjdbOverhang
+    ```
   picard: >
-    "picard can give you additional metrics on your aligned reads, such as the strandedness of your sequences (not included here),
+    picard can give you additional metrics on your aligned reads, such as the strandedness of your sequences (not included here),
     the percentage of ribosomal rna contamination, and the distribution of reads across genomic features (exonic, intronic, intergenic).
     ideally, you want a low percentage of rRNA contamination (<5%), a low percentage of intergenic bases (<40%), and the majority of your 
-    reads mapping to exonic regions (>65%)."
+    reads mapping to exonic regions (>65%).
+    command(s) used for picard metrics calculation:
+
+    ```bash
+    picard CollectRnaSeqMetrics \
+             I=aligned_coordBam \
+             O=collect_rnaSeq_file \
+             REF_FLAT=refFlat_file \
+             STRAND=strandedness \
+             RIBOSOMAL_INTERVALS=riboIntList_file
+    
+    picard CollectInsertSizeMetrics \
+             I=aligned_coordBam \
+             O=insertSize_file \
+             H=insertSize_histogram
+    ```
   rsem: >
-    "if you chose to run rsem, you'd ideally like to see an increase in the percentage of your uniquely mapped reads and a decrease
-    in your unmapped/multimapped reads compared to star."
+    if you chose to run rsem, you'd ideally like to see an increase in the percentage of your uniquely mapped reads and a decrease
+    in your unmapped/multimapped reads compared to star.
+    command used for rsem quantification:
+
+    ```bash
+    rsem-calculate-expression --paired-end \
+                              --bam \
+                              -p n_threads \
+                              --forward-prob strandedness \
+                              --time aligned_transcriptBam rsem_index_name rsem_out_dir/current_sample
+    ```
   multiqc_software_versions: "software versions of all tools used in this analysis"
