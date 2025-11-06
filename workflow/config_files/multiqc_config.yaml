@@ -27,24 +27,26 @@ intro_text: "i am some intro text that madi will eventually think of"
 report_comment: "a comment about this report :)"
 
 table_sample_merge:
-  - sp: '_R[12](?:_001)?_fastqc'
-    rp: ' (untrimmed)'
-  - sp: '_R[12]_trimmed_fastqc'
-    rp: ' (trimmed)'
+  "_R1_001": " (R1)"
+  "_R2_001": " (R2)"
+  "_R1_trimmed": " (R1 trimmed)"
+  "_R2_trimmed": " (R2 trimmed)"
+  "_R1": " (R1)"
+  "_R2": " (R2)"
 
 module_order:
   - fastqc:
       name: "FastQC (raw reads)"
       anchor: "fastqc_raw_reads"
-      path_filters:
-        - "*_R[12]_001_fastqc.zip"
-        - "*_R[12]_fastqc.zip"
+      path_filters: 
+        - "*_001_fastqc.zip"
+        - "*[!d]_fastqc.zip"
   - cutadapt
   - fastqc:
       name: "FastQC (trimmed reads)"
       anchor: "fastqc_trimmed_reads"
       path_filters: 
-        - "*_R[12]_trimmed_fastqc.zip"
+        - "*trimmed_fastqc.zip"
   - star
   - picard
   - rsem
