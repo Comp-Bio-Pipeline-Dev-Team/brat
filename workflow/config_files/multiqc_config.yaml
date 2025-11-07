@@ -95,12 +95,12 @@ section_comments:
     if you have a lot of reads that didn't map at all, you may want to investigate further and 
     rerun alignment with optimization parameters such as:  
 
-    ```bash
+    <pre><code>
     --outSAMunmapped Within KeepPairs \  
     --outReadsUnmapped Fastx \  
     --outFilterScoreMinOverLread 0.20 \ ## adjust as needed, lower values are less stringent (+/- 0.10)  
     --outFilterMatchNminOverLread 0.20 ## must match the above value
-    ```
+    </code></pre>
 
     if your percentage of uniquely mapped reads is still low,
     your reads may be of low quality, fragmented, or there may be contamination in your samples. you can also rerun
@@ -108,17 +108,17 @@ section_comments:
 
     command used for star alignment:  
 
-    ```bash
-    STAR --runMode alignReads \  
-         --runThreadN n_threads \  
-         --genomeDir star_genome_index_dir \  
-         --readFilesCommand zcat \  
-         -sjdbGTFfile annotFile \  
-         --readFilesIn forwardTrimmed reverseTrimmed \  
-         --outFileNamePrefix star_sample_prefix \ ## default is gene_id   
-         --outSAMtype BAM SortedByCoordinate \  
-         --quantMode TranscriptomeSAM GeneCounts \  
-         --twopassMode Basic \  
+    ```
+    STAR --runMode alignReads \
+         --runThreadN n_threads \
+         --genomeDir star_genome_index_dir \
+         --readFilesCommand zcat \
+         -sjdbGTFfile annotFile \
+         --readFilesIn forwardTrimmed reverseTrimmed \
+         --outFileNamePrefix star_sample_prefix \ ## default is gene_id
+         --outSAMtype BAM SortedByCoordinate \
+         --quantMode TranscriptomeSAM GeneCounts \
+         --twopassMode Basic \
          --sjdbOverhang
     ```
   picard: |
@@ -140,7 +140,7 @@ section_comments:
     picard CollectInsertSizeMetrics \  
              I=aligned_coordBam \  
              O=insertSize_file \  
-             H=insertSize_histogram  
+             H=insertSize_histogram
     ```
   rsem: |
     if you chose to run rsem, you'd ideally like to see an increase in the percentage of your uniquely mapped reads and a decrease
