@@ -58,22 +58,22 @@ section_comments:
     the average and median read lengths to be the same, 
     and for both strands per sample to be evenly sequenced. 
     read duplication is commonly high in bulk RNA-seq data, so don't be alarmed by that.
-  fastqc_raw_reads: >
+  fastqc_raw_reads: |
     here you want to check that base quality/confidence and average sequence quality have high Phred scores,
     (in the green section). the max Phred score is 38-40 depending on the chemistry color used in Illumina sequencing.
     adapter content will be flagged here since this is prior to trimming.  
         
     command used for fastqc on raw/trimmed reads:  
 
-    ```
+    ```bash
     fastqc inFiles -o outDir --threads n_threads
     ```
-  cutadapt: >
+  cutadapt: |
     trimming of raw sequences  
 
     command used for cutadapt trimming:  
 
-    ```
+    ```bash
     cutadapt -a adapter_threePrime \  
              -A adapter_threePrime \  
              chemistryFlag \  
@@ -89,25 +89,26 @@ section_comments:
     here you want to check that post-trimming base quality/confidence and average sequence quality have 
     higher Phred scores (closer to 38-40) than pre-trimming, and that adapter content has been removed. 
     you'll also want to check your samples for overrepresented sequences and investigate any that are found.
-  star: >
+  star: |
     here you want to check that the percentage of uniquely mapped reads is high (ideally >70%),
     and that the percentage of reads mapped to multiple loci is low (ideally <15%).
     if you have a lot of reads that didn't map at all, you may want to investigate further and 
     rerun alignment with optimization parameters such as:  
 
-    ```
+    ```bash
     --outSAMunmapped Within KeepPairs \  
     --outReadsUnmapped Fastx \  
     --outFilterScoreMinOverLread 0.20 \ ## adjust as needed, lower values are less stringent (+/- 0.10)  
     --outFilterMatchNminOverLread 0.20 ## must match the above value
     ```
+
     if your percentage of uniquely mapped reads is still low,
     your reads may be of low quality, fragmented, or there may be contamination in your samples. you can also rerun
     the alignment with rsem instead of star to see if that improves alignment/quantification (include `--run_rsem` flag).  
 
     command used for star alignment:  
 
-    ```
+    ```bash
     STAR --runMode alignReads \  
          --runThreadN n_threads \  
          --genomeDir star_genome_index_dir \  
@@ -120,7 +121,7 @@ section_comments:
          --twopassMode Basic \  
          --sjdbOverhang
     ```
-  picard: >
+  picard: |
     picard can give you additional metrics on your aligned reads, such as the strandedness of your sequences (not included here),
     the percentage of ribosomal rna contamination, and the distribution of reads across genomic features (exonic, intronic, intergenic).
     ideally, you want a low percentage of rRNA contamination (<5%), a low percentage of intergenic bases (<40%), and the majority of your 
@@ -128,7 +129,7 @@ section_comments:
 
     command(s) used for picard metrics calculation:  
 
-    ```
+    ```bash
     picard CollectRnaSeqMetrics \  
              I=aligned_coordBam \  
              O=collect_rnaSeq_file \  
@@ -141,13 +142,13 @@ section_comments:
              O=insertSize_file \  
              H=insertSize_histogram  
     ```
-  rsem: >
+  rsem: |
     if you chose to run rsem, you'd ideally like to see an increase in the percentage of your uniquely mapped reads and a decrease
     in your unmapped/multimapped reads compared to star.  
 
     command used for rsem quantification:  
 
-    ```
+    ```bash
     rsem-calculate-expression --paired-end \  
                               --bam \  
                               -p n_threads \  
