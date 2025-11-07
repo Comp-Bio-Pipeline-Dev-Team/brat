@@ -3,10 +3,11 @@ from os.path import basename
 from os.path import dirname
 from os.path import exists
 from os.path import join as pj
-import os
 import re
 import glob
 import subprocess
+import ruamel.yaml
+from ruamel.yaml import YAML
 
 ## finds line number for the line containing a specified string and returns only the line number 
 ##def get_lines_to_skip(file_path,
@@ -205,4 +206,40 @@ def move_workflow_profile(user_profile_path):
         print("The specified profile path does not exist or is a directory, please check that your input is a .yaml file and try again.")
         exit()
 
-move_workflow_profile(user_profile_path=fake_profile_path)
+##move_workflow_profile(user_profile_path=fake_profile_path)
+
+
+## testing out creating run config and adding to multiqc report comment
+def assemble_report_config():
+    config_text = """Raw Sequence Directory:             /path/to/raw_seqs
+    Metadata File:                      /path/to/metadata.tsv
+    Snakemake Profile:                  /path/to/profile/config.yaml
+    Genome FASTA:                       /path/to/genome.fasta
+    Annotation File (GTF):              /path/to/annotations.gtf
+    Annotation Gene Name Column:        gene_name
+    Raw Sequence Read Length:           0
+    Picard RefFlat File:                /path/to/refflat.txt
+    Picard Ribosomal Intervals File:    /path/to/ribo_intervals.list
+    MultiQC Config File:                tmp.brat/multiqc_config.yaml
+    RSEM Quantification:                True
+    Additional Cutadapt Parameters:     --nextseq-trim=20
+    Additional STAR Parameters:         --outFilterMultimapNmax 20
+    Additional RSEM Parameters:         --seed 12345
+    Latency Wait (secs):                10
+    Deployment Method:                  singularity
+    Dry Run:                            True"""
+
+    print(f"""Running with Config:\n    {config_text}""")
+
+    config_dict = {"report_comment": f"you ran this workflow with:\n\n <pre><code>\n{config_text}\n</code></pre>\n"}
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.default_flow_style = False
+    yaml.width = 10000
+    with open("test_multiqc.yaml", "w") as f:
+        yaml.dump(config_dict, f)
+    command = ["cat", "test_multiqc.yaml", ">>", "final_test.yml"]
+    subprocess.run(" ".join(command), shell=True)
+    
+
+assemble_report_config()

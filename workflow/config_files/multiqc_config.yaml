@@ -19,7 +19,7 @@ report_header_info:
 title: "brat run report"
 subtitle: "a detailed report of all analysis run" 
 intro_text: "i am some intro text that madi will eventually think of"
-report_comment: "a comment about this report :)"
+##report_comment: "a comment about this report :) - config params go here (somehow)"
 
 ## added regex for sample merging to account for different delimiters, captialization, and presence/absence of _001
 ## may or may not have to adjust for trimmed samples as well 
@@ -76,7 +76,7 @@ section_comments:
     <pre><code>
     cutadapt -a adapter_threePrime \  
              -A adapter_threePrime \  
-             chemistryFlag \  
+             chemistryFlag \  ## either --nextseq-trim for Novaseq 2 color chemistry or -q for others
              --minimum-length=minReadLen \  
              -j n_threads \  
              --pair-filter=any \  
@@ -134,7 +134,7 @@ section_comments:
              I=aligned_coordBam \  
              O=collect_rnaSeq_file \  
              REF_FLAT=refFlat_file \  
-             STRAND=strandedness \  
+             STRAND=strandedness \ ## we calculate this so you dont have to!
              RIBOSOMAL_INTERVALS=riboIntList_file  
     
     picard CollectInsertSizeMetrics \  
@@ -152,7 +152,7 @@ section_comments:
     rsem-calculate-expression --paired-end \  
                               --bam \  
                               -p n_threads \  
-                              --forward-prob strandedness \  
+                              --forward-prob strandedness \ ## we calculate this so you dont have to!
                               --time aligned_transcriptBam rsem_index_name rsem_out_dir/current_sample
     </code></pre>
   multiqc_software_versions: "software versions of all tools used in this analysis"

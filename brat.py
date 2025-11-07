@@ -10,6 +10,8 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import SingleQuotedScalarString
 
+yaml = YAML()
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--raw_seq_dir",
@@ -121,7 +123,7 @@ def move_multiqc_config(multiqc_config_path):
 
 def create_config_file(config_path,
                        args):
-    yaml = YAML()
+    ##yaml = YAML()
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
 
@@ -148,6 +150,44 @@ def create_config_file(config_path,
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
+
+
+def get_run_info(args):
+    config_text = f"""Raw Sequence Directory:             {args.raw_seq_dir}
+    Metadata File:                      {args.metadata_file}
+    Snakemake Profile:                  {args.profile}
+    Genome Used:                        {args.genome_name}
+    Genome FASTA:                       {args.genome_fasta}
+    Annotation File (GTF):              {args.gtf_file}
+    Annotation Gene Name Column:        {args.annot_col_name}
+    Raw Sequence Read Length:           {args.read_length}
+    Picard RefFlat File:                {args.refflat}
+    Picard Ribosomal Intervals File:    {args.ribosomal_int_list}
+    MultiQC Config File:                tmp.brat/multiqc_config.yaml
+    RSEM Quantification:                {'True' if args.run_rsem else 'False'}
+    Additional Cutadapt Parameters:     {args.extra_cutadapt_params}
+    Additional STAR Parameters:         {args.extra_star_params}
+    Additional RSEM Parameters:         {args.extra_rsem_params}
+    Latency Wait (secs):                {args.latency_wait}
+    Deployment Method:                  {'singularity' if args.use_singularity else 'conda'}
+    Dry Run:                            {'True' if args.dry_run else 'False'}"""
+
+    ## print run config to console
+    print(f"""Running with config:\n    {config_text}""")
+
+    ## create multiqc config file with run config info appended to it
+    config_dict = {"report_comment": f"you ran this workflow with:\n\n <pre><code>\n{config_text}\n</code></pre>\n"}
+    ##yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.default_flow_style = False
+    yaml.width = 10000 ## make sure long lines dont get wrapped
+    tmp_yml_path = "tmp.brat/tmp.yml"
+    with open(tmp_yml_path, "w") as f:
+        yaml.dump(config_dict, f)
+    
+    ## concatenate tmp yml file to multiqc config file in tmp.brat
+    command = ["cat", tmp_yml_path, ">>", "tmp.brat/multiqc_config.yaml"]
+    subprocess.run(" ".join(command), shell=True)
 
 
 
@@ -191,6 +231,10 @@ def main():
                                      args)
     
     complete = subprocess.run(command)
+
+    print("Running brat with the following command:")
+    print(" ".join(command))
+    get_run_info(args)
 
 
 if __name__=="__main__":
