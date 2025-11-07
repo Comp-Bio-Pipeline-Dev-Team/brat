@@ -65,15 +65,15 @@ section_comments:
         
     command used for fastqc on raw/trimmed reads:  
 
-    ```bash
+    <pre><code>
     fastqc inFiles -o outDir --threads n_threads
-    ```
+    </code></pre>
   cutadapt: |
     trimming of raw sequences  
 
     command used for cutadapt trimming:  
 
-    ```bash
+    <pre><code>
     cutadapt -a adapter_threePrime \  
              -A adapter_threePrime \  
              chemistryFlag \  
@@ -84,7 +84,7 @@ section_comments:
              -p reverseTrimmed \  
              forward reverse>log \  
              2>error
-    ```
+    </code></pre>
   fastqc_trimmed_reads: >
     here you want to check that post-trimming base quality/confidence and average sequence quality have 
     higher Phred scores (closer to 38-40) than pre-trimming, and that adapter content has been removed. 
@@ -108,7 +108,7 @@ section_comments:
 
     command used for star alignment:  
 
-    ```
+    <pre><code>
     STAR --runMode alignReads \
          --runThreadN n_threads \
          --genomeDir star_genome_index_dir \
@@ -120,7 +120,7 @@ section_comments:
          --quantMode TranscriptomeSAM GeneCounts \
          --twopassMode Basic \
          --sjdbOverhang
-    ```
+    </code></pre>
   picard: |
     picard can give you additional metrics on your aligned reads, such as the strandedness of your sequences (not included here),
     the percentage of ribosomal rna contamination, and the distribution of reads across genomic features (exonic, intronic, intergenic).
@@ -129,7 +129,7 @@ section_comments:
 
     command(s) used for picard metrics calculation:  
 
-    ```bash
+    <pre><code>
     picard CollectRnaSeqMetrics \  
              I=aligned_coordBam \  
              O=collect_rnaSeq_file \  
@@ -141,18 +141,18 @@ section_comments:
              I=aligned_coordBam \  
              O=insertSize_file \  
              H=insertSize_histogram
-    ```
+    </code></pre>
   rsem: |
     if you chose to run rsem, you'd ideally like to see an increase in the percentage of your uniquely mapped reads and a decrease
     in your unmapped/multimapped reads compared to star.  
 
     command used for rsem quantification:  
 
-    ```bash
+    <pre><code>
     rsem-calculate-expression --paired-end \  
                               --bam \  
                               -p n_threads \  
                               --forward-prob strandedness \  
                               --time aligned_transcriptBam rsem_index_name rsem_out_dir/current_sample
-    ```
+    </code></pre>
   multiqc_software_versions: "software versions of all tools used in this analysis"
