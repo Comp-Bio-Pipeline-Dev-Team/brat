@@ -155,4 +155,5 @@ section_comments:
                               --forward-prob strandedness \ ## we calculate this so you dont have to!
                               --time aligned_transcriptBam rsem_index_name rsem_out_dir/current_sample
     </code></pre>
-  multiqc_software_versions: "software versions of all tools used in this analysis"
+  multiqc_software_versions: "software versions of all tools used in this analysis"  
+

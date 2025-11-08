@@ -123,7 +123,6 @@ def move_multiqc_config(multiqc_config_path):
 
 def create_config_file(config_path,
                        args):
-    ##yaml = YAML()
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
 
@@ -152,6 +151,7 @@ def create_config_file(config_path,
         yaml.dump(config_params, outfile)
 
 
+## print run info to console and append to multiqc config file
 def get_run_info(args):
     config_text = f"""Raw Sequence Directory:             {args.raw_seq_dir}
     Metadata File:                      {args.metadata_file}
@@ -176,11 +176,11 @@ def get_run_info(args):
     print(f"""Running with config:\n    {config_text}""")
 
     ## create multiqc config file with run config info appended to it
-    config_dict = {"report_comment": f"you ran this workflow with:\n\n <pre><code>\n{config_text}\n</code></pre>\n"}
-    ##yaml = YAML()
+    config_dict = {"report_comment": f"you ran this workflow with:\n\n <pre><code>\n    {config_text}\n</code></pre>\n"}
+    
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
-    yaml.width = 10000 ## make sure long lines dont get wrapped
+    yaml.width = 100000 ## make sure long lines dont get wrapped
     tmp_yml_path = "tmp.brat/tmp.yml"
     with open(tmp_yml_path, "w") as f:
         yaml.dump(config_dict, f)
@@ -230,11 +230,12 @@ def main():
                                      get_profile_path(),
                                      args)
     
-    complete = subprocess.run(command)
-
+    ## print snakemake command and run info to console upon runtime 
     print("Running brat with the following command:")
     print(" ".join(command))
     get_run_info(args)
+    
+    complete = subprocess.run(command)
 
 
 if __name__=="__main__":
