@@ -151,6 +151,102 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
         multiqcFilename = "posttrimming_multiqc_report.html"
 
 
+## fastq screen config file
+## will snakemake be mad about the list input? we'll find out...
+rule create_fastq_screen_config:
+    input:
+        genomeList = FQSCREEN_GENOMES
+    output:
+        fqScreen_config = "tmp.brat/fastq_screen.conf.mod"
+    singularity:
+        UBUNTU_SING
+    params:
+        index_loc = "tmp.brat/reference_indices/bowtie2"
+    shell:
+        """
+        ## how to pull everything from the gene names column on the command line (i probs wont need this)
+        ## awk -F , '{{print $1}}' fastq_screen_genomes.csv | sed '1d'
+
+        ## adding call for bowtie2 (hopefully this works)
+        printf "BOWTIE2\t bowtie2\n" > {output.fqScreen_config}
+
+        for genome in ${{{input.genomeList}[*]}};
+        do
+            printf "DATABASE\t ${{genome}}\t {params.index_loc}/${{genome}}/${{genome}}\n" >> {output.fqScreen_config}
+        done
+        """
+
+
+## generating bowtie2 indices 
+rule generate_fastq_screen_index:
+    input:
+        linkFile = FQSCREEN_FILE
+    output:
+        index = directory("tmp.brat/reference_indices/bowtie2/{fq_screen_genome}/")
+    singularity:
+        FQSCREEN_SING
+    conda:
+        FQSCREEN_CONDA
+    params:
+        genome_name = lambda wc: wc.get("fq_screen_genome"),
+        genome_fasta_dir = "tmp.brat/reference_indices/fastq_screen_fnas/", ## do i need to create this directory before i pull the files there?
+        index_name = "tmp.brat/reference_indices/bowtie2/{fq_screen_genome}/{fq_screen_genome}"
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{fq_screen_genome}.bowtie2.log")
+    shell:
+        """
+        ## get appropriate link 
+        link=$( grep {params.genome_name} {input.linkFile} | sed 's/^[^,]*,//' )
+
+        ## and download it to specified directory via wget 
+        wget -P {params.genome_fasta_dir} ${{link}}
+
+        ## pulling off name of file 
+        fileName=$( basename ${{link}} )
+
+        ## pulling bowtie2 version
+        ## im not using sed for this one bc it was a bit more complicated to pull the actual version off the first line
+        ( echo -n "bowtie2: "; printf "\"%s\"\n" "$(bowtie2 --version 2>&1 | head -n 1 | awk -F ' ' '{{print $NF}}')" ) > {log.software_log} 2>&1
+
+        ## bowtie2 command to build index from downloaded fasta
+        bowtie2-build -f {params.genome_fasta_dir}${{fileName}} \
+                         {params.index_name}
+        """
+
+
+## actually running fastq screen 
+## every single trimmed fastq file needs to go into this rule separately 
+## hopefully snakemake isnt mad about all the wildcards in this rule...
+rule run_fastq_screen:
+    input:
+        builtIndices = expand("tmp.brat/reference_indices/bowtie2/{fq_screen_genome}/",
+                               fq_screen_genome=FQSCREEN_GENOMES),
+        fqScreen_config = "tmp.brat/fastq_screen.conf.mod",
+        trimmedReads = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_{read}_trimmed.fastq.gz")
+    output:
+        outDir = directory(pj(OUT_DIR_NAME, "fastq_screen/{sample}/{read}/"))
+    singularity:
+        FQSCREEN_SING
+    conda:
+        FQSCREEN_CONDA
+    log:
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.fastq_screen.log")
+    params:
+        n_threads = 11 ## currently threads=num cpus but might be changed
+    shell:
+        """
+        ## pulling fastq screen version for report
+        ( echo -n "fastq screen: "; printf "\"%s\"\n" "$(fastq_screen --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
+
+        fastq_screen --outdir {output.outDir} \
+                     --subset 0 \
+                     --conf {input.fqScreen_config} \
+                     --threads {params.n_threads} \
+                     --nohits \
+                     {input.trimmedReads}
+        """
+
+
 
 ## copy input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
 ## symlinks for individual files didnt work bc symlink names are copied over but not the actual files (i.e. containers break the symlinks)

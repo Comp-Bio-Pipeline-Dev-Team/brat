@@ -20,11 +20,6 @@ rule create_report:
         multiqc_config = MULTIQC_CONFIG_PATH
     shell:
         """
-        ## pull all unique entries from log files to create software used log for multiqc
-        ##cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_software_used.log
-        ## insert software used into multiqc config file via yq
-        ##yq eval -i '.software_versions = loadstr("{params.outDir}/brat_software_used.log")' {params.multiqc_config}
-
         ## new way (a lot less code) - create a yaml file with software versions for multiqc to read directly
         cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_mqc_versions.yml
 

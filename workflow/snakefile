@@ -12,6 +12,12 @@ from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep='\t')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
+TRIMMED_READS = ["R1", "R2"]
+
+## getting fastq screen genome names from url file
+FQSCREEN_FILE = config['fastq_screen_genomes']
+FQSCREEN_DF = pd.read_csv(config['fastq_screen_genomes'], sep=',')
+FQSCREEN_GENOMES = FQSCREEN_DF['genome_name'].tolist()
 
 ## allows for output directory name to be specified by user
 ## otherwise defaults to "brat_out"
@@ -25,6 +31,7 @@ MULTIQC_CONFIG_PATH = config['multiqc_config_file']
 MODULE_LIST = ["pretrimming_fastqc",
                "posttrimming_fastqc",
                "cutadapt",
+               "fastq_screen",
                "star_alignment",
                "picard_collectRnaSeq",
                "picard_collectInsertSize"]
@@ -78,6 +85,7 @@ sample_fp_dict = make_fp_dict(metadata_df=METADATA,
 FASTQC_CONDA = "../envs/fastqc_v0.12.1.yml"
 MULTIQC_CONDA = "../envs/multiqc_v1.30.yml"
 CUTADAPT_CONDA = "../envs/cutadapt_v4.2.yml"
+FQSCREEN_CONDA = "../envs/fastq_screen_v0.16.0.yml"
 STAR_CONDA = "../envs/star_v2.7.11b.yml"
 PICARD_CONDA = "../envs/picard_v2.27.5.yml"
 RSEM_CONDA = "../envs/rsem_v1.3.3.yml"
@@ -87,6 +95,7 @@ UBUNTU_SING = "docker://madiapgar/bulk_rna_seq:ubuntu-v24.04"
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
 MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.30"
 CUTADAPT_SING = "docker://madiapgar/bulk_rna_seq:cutadapt-v4.2"
+FQSCREEN_SING = "docker://madiapgar/bulk_rna_seq:fastq_screen-v0.16.0"
 STAR_SING = "docker://madiapgar/bulk_rna_seq:star-v2.7.11b"
 RSEM_SING = "docker://madiapgar/bulk_rna_seq:rsem-v1.3.3"
 PICARD_SING = "docker://madiapgar/bulk_rna_seq:picard-v2.27.5"
@@ -131,6 +140,13 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
                sample=SAMPLE_LIST), 
             pj(OUT_DIR_NAME, "posttrimming_multiqc_report.html"),
             pj(SOFTWARE_LOG_DIR, "multiqc2.log"),
+            "tmp.brat/fastq_screen.conf.mod",
+            expand("tmp.brat/reference_indices/bowtie2/{fq_screen_genome}/",
+                   fq_screen_genome=FQSCREEN_GENOMES),
+            expand(pj(SOFTWARE_LOG_DIR, "{fq_screen_genome}.bowtie2.log"),
+                    fq_screen_genome=FQSCREEN_GENOMES),
+            expand(pj(OUT_DIR_NAME, "fastq_screen/{sample}/{read}/"),
+                    sample=SAMPLE_LIST, read=TRIMMED_READS),
             NEW_FASTA_PATH,
             NEW_ANNOT_PATH,
             NEW_PICARD_RRNA_INTERVAL,

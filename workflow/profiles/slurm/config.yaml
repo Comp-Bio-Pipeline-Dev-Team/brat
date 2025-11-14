@@ -44,6 +44,24 @@ set-resources:
         cpus_per_task: 1
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/posttrimming_multiqc/%J.log' '--error=logs/slurm/posttrimming_multiqc/%J.err'"
+    create_fastq_screen_config:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_config/%J.log' '--error=logs/slurm/fastq_screen_config/%J.err'"
+    generate_fastq_screen_index:
+        runtime: 360 ## 3h enough??
+        mem: "15GB" ## i have no idea what this will be 
+        cpus_per_task: 4
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_index/%J.log' '--error=logs/slurm/fastq_screen_index/%J.err'"
+    run_fastq_screen: ## might have to change qos=long
+        runtime: 1434 ## 23.9h
+        mem: "40GB"
+        cpus_per_task: 11
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen/%J.log' '--error=logs/slurm/fastq_screen/%J.err'"
     copy_reference_files:
         runtime: 60
         mem: "1GB"

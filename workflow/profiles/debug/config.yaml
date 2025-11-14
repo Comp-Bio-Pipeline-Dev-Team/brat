@@ -43,6 +43,24 @@ set-resources:
         cpus_per_task: 1
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/09252025/posttrimming_multiqc_%J.log' '--error=logs/09252025/posttrimming_multiqc_%J.err'"
+    create_fastq_screen_config:
+        runtime: 60
+        mem: "1GB"
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/09252025/fastq_screen_config/%J.log' '--error=logs/09252025/fastq_screen_config/%J.err'"
+    generate_fastq_screen_index:
+        runtime: 360 ## 3h enough??
+        mem: "15GB" ## i have no idea what this will be 
+        cpus_per_task: 4
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/09252025/fastq_screen_index/%J.log' '--error=logs/09252025/fastq_screen_index/%J.err'"
+    run_fastq_screen: ## might have to change qos=long
+        runtime: 1434 ## 23.9h
+        mem: "40GB"
+        cpus_per_task: 11
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/09252025/fastq_screen/%J.log' '--error=logs/09252025/fastq_screen/%J.err'"
     copy_reference_files:
         runtime: "1h"
         mem: "1GB"
@@ -97,3 +115,9 @@ set-resources:
         cpus_per_task: 3 ## 10/3.75 = cpus_per_task
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/09252025/rsem_quantification_%J.log' '--error=logs/09252025/rsem_quantification_%J.err'"
+    create_report:
+        runtime: 60 
+        mem: "1GB" 
+        cpus_per_task: 1
+        nodes: 1
+        slurm_extra: "'--qos=normal' '--output=logs/09252025/brat_report/%J.log' '--error=logs/09252025/brat_report/%J.err'"

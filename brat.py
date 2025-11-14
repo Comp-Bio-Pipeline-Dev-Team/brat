@@ -26,6 +26,11 @@ def get_args():
     ## need to figure out the default profile for this!! (local execution?)
     parser.add_argument("--profile",
                         help="The filepath to the snakemake profile .yaml file you want to use.")
+    ## might need to change the link for this!!
+    parser.add_argument("--fastq_screen_genomes",
+                        help="The filepath to the .csv file containing names/urls to fastq screen possible contaminant genomes. \
+                              The file must contain two columns: 'genome_name' and 'url'. A pre-built .csv file is provided for you \
+                              in the github repo at: https://github.com/Comp-Bio-Pipeline-Dev-Team/bulk_rna_seq.")
     parser.add_argument("--genome_fasta",
                         help="The filepath to the genome fasta file.")
     parser.add_argument("--genome_name",
@@ -145,7 +150,8 @@ def create_config_file(config_path,
                      "rsem_params": SingleQuotedScalarString(args.extra_rsem_params),
                      "run_rsem": True if args.run_rsem else False,
                      "deployment_method": "singularity" if args.use_singularity else "conda",
-                     "multiqc_config_file": multiqc_config_dest}
+                     "multiqc_config_file": multiqc_config_dest,
+                     "fastq_screen_genomes": args.fastq_screen_genomes}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -156,6 +162,7 @@ def get_run_info(args):
     config_text = f"""Raw Sequence Directory:             {args.raw_seq_dir}
     Metadata File:                      {args.metadata_file}
     Snakemake Profile:                  {args.profile}
+    FASTQ Screen Genomes File:          {args.fastq_screen_genomes}
     Genome Used:                        {args.genome_name}
     Genome FASTA:                       {args.genome_fasta}
     Annotation File (GTF):              {args.gtf_file}
