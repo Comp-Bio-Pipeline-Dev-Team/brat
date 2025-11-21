@@ -34,6 +34,7 @@ table_sample_merge:
       pattern: "[_.-](?:[rR])?2(?:[_.-]001)$"
 
 module_order:
+  - fastq_screen
   - fastqc:
       name: "FastQC (raw reads)"
       anchor: "fastqc_raw_reads"
@@ -58,6 +59,11 @@ section_comments:
     the average and median read lengths to be the same, 
     and for both strands per sample to be evenly sequenced. 
     read duplication is commonly high in bulk RNA-seq data, so don't be alarmed by that.
+  fastq_screen: >
+    here you want to check that the majority of your reads map to your organism of interest
+    (ideally >70%), and that there is minimal contamination from other organisms.
+    if you see a significant percentage of reads mapping to unexpected organisms,
+    you may want to investigate further and consider removing those reads from your dataset.
   fastqc_raw_reads: |
     here you want to check that base quality/confidence and average sequence quality have high Phred scores,
     (in the green section). the max Phred score is 38-40 depending on the chemistry color used in Illumina sequencing.
@@ -154,6 +160,8 @@ section_comments:
                               -p n_threads \  
                               --forward-prob strandedness \ ## we calculate this so you dont have to!
                               --time aligned_transcriptBam rsem_index_name rsem_out_dir/current_sample
-    </code></pre>
-  multiqc_software_versions: "software versions of all tools used in this analysis"  
+    </code></pre>  
+  ##multiqc_software_versions: "software versions of all tools used in this analysis"  
+
+
 

@@ -12,6 +12,7 @@ from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep='\t')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
+## i know what these are since I hard coded them as the output(s) of cutadapt rule
 TRIMMED_READS = ["R1", "R2"]
 
 ## getting fastq screen genome names from url file
@@ -31,7 +32,6 @@ MULTIQC_CONFIG_PATH = config['multiqc_config_file']
 MODULE_LIST = ["pretrimming_fastqc",
                "posttrimming_fastqc",
                "cutadapt",
-               "fastq_screen",
                "star_alignment",
                "picard_collectRnaSeq",
                "picard_collectInsertSize"]
@@ -146,6 +146,8 @@ main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),
             expand(pj(SOFTWARE_LOG_DIR, "{fq_screen_genome}.bowtie2.log"),
                     fq_screen_genome=FQSCREEN_GENOMES),
             expand(pj(OUT_DIR_NAME, "fastq_screen/{sample}/{read}/"),
+                    sample=SAMPLE_LIST, read=TRIMMED_READS),
+            expand(pj(SOFTWARE_LOG_DIR, "{sample}.{read}.fastq_screen.log"),
                     sample=SAMPLE_LIST, read=TRIMMED_READS),
             NEW_FASTA_PATH,
             NEW_ANNOT_PATH,

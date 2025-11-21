@@ -1,12 +1,14 @@
 ## sub-workflow to generate the overall multiqc report for all analysis run 
 
+## take previous multiqc outputs out of rule since they may mess up the report??
 rule create_report:
     input:
         moduleDirs = expand(pj(OUT_DIR_NAME, "{module}/{sample}/"),
                             module=MODULE_LIST,
                             sample=SAMPLE_LIST),
-        multiqcDirs = [pj(OUT_DIR_NAME, "pretrimming_multiqc_report_data"),
-                       pj(OUT_DIR_NAME, "posttrimming_multiqc_report_data")],
+        fastqScreenDirs = expand(pj(OUT_DIR_NAME, "fastq_screen/{sample}/{read}/"),
+                                 sample=SAMPLE_LIST,
+                                 read=TRIMMED_READS)
     output: 
         outFile = pj(OUT_DIR_NAME, "brat_run_report.html")
     singularity:
@@ -23,5 +25,5 @@ rule create_report:
         ## new way (a lot less code) - create a yaml file with software versions for multiqc to read directly
         cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_mqc_versions.yml
 
-        multiqc {input.moduleDirs} {input.multiqcDirs} {params.outDir}/brat_mqc_versions.yml --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
+        multiqc {input.moduleDirs} {input.fastqScreenDirs} {params.outDir}/brat_mqc_versions.yml --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
         """

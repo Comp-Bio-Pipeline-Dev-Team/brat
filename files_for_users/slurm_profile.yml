@@ -51,9 +51,9 @@ set-resources:
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_config/%J.log' '--error=logs/slurm/fastq_screen_config/%J.err'"
     generate_fastq_screen_index:
-        runtime: 360 ## 3h enough??
-        mem: "15GB" ## i have no idea what this will be 
-        cpus_per_task: 4
+        runtime: 60 ## could decrease to 30mins but we'll see
+        mem: "5GB" ## this is still probably too much, could decrease to 1GB 
+        cpus_per_task: 2
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_index/%J.log' '--error=logs/slurm/fastq_screen_index/%J.err'"
     run_fastq_screen: ## might have to change qos=long

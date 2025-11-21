@@ -153,31 +153,33 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
 
 ## fastq screen config file
 ## will snakemake be mad about the list input? we'll find out...
-rule create_fastq_screen_config:
-    input:
-        genomeList = FQSCREEN_GENOMES
+## update: snakemake was mad ab it so added list to params and took out input
+## how to pull everything from the gene names column on the command line (i probs wont need this)
+## awk -F , '{{print $1}}' fastq_screen_genomes.csv | sed '1d'
+rule create_fastq_screen_config: 
     output:
         fqScreen_config = "tmp.brat/fastq_screen.conf.mod"
     singularity:
         UBUNTU_SING
     params:
-        index_loc = "tmp.brat/reference_indices/bowtie2"
+        index_loc = "tmp.brat/reference_indices/bowtie2",
+        genomeList = FQSCREEN_GENOMES
     shell:
         """
-        ## how to pull everything from the gene names column on the command line (i probs wont need this)
-        ## awk -F , '{{print $1}}' fastq_screen_genomes.csv | sed '1d'
-
-        ## adding call for bowtie2 (hopefully this works)
+        ## adding call for bowtie2
         printf "BOWTIE2\t bowtie2\n" > {output.fqScreen_config}
 
-        for genome in ${{{input.genomeList}[*]}};
+        bashGenomes=({params.genomeList})
+
+        for genome in ${{bashGenomes[*]}};
         do
             printf "DATABASE\t ${{genome}}\t {params.index_loc}/${{genome}}/${{genome}}\n" >> {output.fqScreen_config}
         done
         """
 
 
-## generating bowtie2 indices 
+## generating bowtie2 indices
+## had to remove carriage return characters from links
 rule generate_fastq_screen_index:
     input:
         linkFile = FQSCREEN_FILE
@@ -189,14 +191,14 @@ rule generate_fastq_screen_index:
         FQSCREEN_CONDA
     params:
         genome_name = lambda wc: wc.get("fq_screen_genome"),
-        genome_fasta_dir = "tmp.brat/reference_indices/fastq_screen_fnas/", ## do i need to create this directory before i pull the files there?
+        genome_fasta_dir = "tmp.brat/reference_indices/fastq_screen_fnas/",
         index_name = "tmp.brat/reference_indices/bowtie2/{fq_screen_genome}/{fq_screen_genome}"
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{fq_screen_genome}.bowtie2.log")
     shell:
         """
         ## get appropriate link 
-        link=$( grep {params.genome_name} {input.linkFile} | sed 's/^[^,]*,//' )
+        link=$( grep {params.genome_name} {input.linkFile} | sed 's/^[^,]*,//' | tr -d '\r' )
 
         ## and download it to specified directory via wget 
         wget -P {params.genome_fasta_dir} ${{link}}
@@ -207,6 +209,9 @@ rule generate_fastq_screen_index:
         ## pulling bowtie2 version
         ## im not using sed for this one bc it was a bit more complicated to pull the actual version off the first line
         ( echo -n "bowtie2: "; printf "\"%s\"\n" "$(bowtie2 --version 2>&1 | head -n 1 | awk -F ' ' '{{print $NF}}')" ) > {log.software_log} 2>&1
+
+        ## make index output directory or else bowtie2 will fail 
+        mkdir -p {output.index}
 
         ## bowtie2 command to build index from downloaded fasta
         bowtie2-build -f {params.genome_fasta_dir}${{fileName}} \
@@ -230,16 +235,17 @@ rule run_fastq_screen:
     conda:
         FQSCREEN_CONDA
     log:
-        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.fastq_screen.log")
+        software_log = pj(SOFTWARE_LOG_DIR, "{sample}.{read}.fastq_screen.log")
     params:
-        n_threads = 11 ## currently threads=num cpus but might be changed
+        n_threads = 11, ## currently threads=num cpus but might be changed
+        subset_num = 0 ## this will be the default!! - subset = number of reads, fastq screen default is 100000
     shell:
         """
         ## pulling fastq screen version for report
         ( echo -n "fastq screen: "; printf "\"%s\"\n" "$(fastq_screen --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         fastq_screen --outdir {output.outDir} \
-                     --subset 0 \
+                     --subset {params.subset_num} \
                      --conf {input.fqScreen_config} \
                      --threads {params.n_threads} \
                      --nohits \

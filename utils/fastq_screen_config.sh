@@ -3,7 +3,11 @@
 ## how to pull url for a specific genome from fastq_screen_genomes.csv
 ## genome will probably be a wildcard in snakefile
 genome="acholeplasma_laidlawii_PG_8A"
-link=$( grep ${genome} fastq_screen_genomes.csv | sed 's/^[^,]*,//' )
+link=$( grep ${genome} ../files_for_users/fastq_screen_genomes.csv | sed 's/^[^,]*,//' )
+
+cleanedLink=$( echo ${link} | tr -d '\r' )
+
+echo ${cleanedLink}
 
 ## and download it to specified directory via wget 
 wget -P tmp.brat/reference_indices/fastq_screen_fnas/ ${link}
