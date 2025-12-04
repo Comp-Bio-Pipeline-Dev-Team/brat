@@ -17,7 +17,7 @@ def get_args():
     parser.add_argument("--raw_seq_dir",
                         help="The filepath to the directory containing raw sequencing files.")
     parser.add_argument("--metadata_file",
-                        help="The filepath to the metadata file as a .tsv. \
+                        help="The filepath to the metadata file as a .csv. \
                               Your metadata file must contain at least three columns: \
                               'sampleid', 'forward', and 'reverse'.")
     parser.add_argument("--out_dir_name",
@@ -31,6 +31,10 @@ def get_args():
                         help="The filepath to the .csv file containing names/urls to fastq screen possible contaminant genomes. \
                               The file must contain two columns: 'genome_name' and 'url'. A pre-built .csv file is provided for you \
                               in the github repo at: https://github.com/Comp-Bio-Pipeline-Dev-Team/bulk_rna_seq.")
+    parser.add_argument("--fastq_screen_subset_num",
+                        help="The number of reads to use for fastq screen contamination estimation, default is 0 (0 means all reads). \
+                              Note: using all reads can be very slow for large datasets, fastq_screen default is 100000 reads.",
+                        default=0)
     parser.add_argument("--genome_fasta",
                         help="The filepath to the genome fasta file.")
     parser.add_argument("--genome_name",
@@ -151,7 +155,8 @@ def create_config_file(config_path,
                      "run_rsem": True if args.run_rsem else False,
                      "deployment_method": "singularity" if args.use_singularity else "conda",
                      "multiqc_config_file": multiqc_config_dest,
-                     "fastq_screen_genomes": args.fastq_screen_genomes}
+                     "fastq_screen_genomes": args.fastq_screen_genomes,
+                     "fastq_screen_subset_num": int(args.fastq_screen_subset_num)}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -163,6 +168,7 @@ def get_run_info(args):
     Metadata File:                      {args.metadata_file}
     Snakemake Profile:                  {args.profile}
     FASTQ Screen Genomes File:          {args.fastq_screen_genomes}
+    Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == 0 else args.fastq_screen_subset_num}
     Genome Used:                        {args.genome_name}
     Genome FASTA:                       {args.genome_fasta}
     Annotation File (GTF):              {args.gtf_file}

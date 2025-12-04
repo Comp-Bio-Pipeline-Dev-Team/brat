@@ -51,9 +51,9 @@ set-resources:
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_config/%J.log' '--error=logs/slurm/fastq_screen_config/%J.err'"
     generate_fastq_screen_index:
-        runtime: 300 
-        mem: "15GB" 
-        cpus_per_task: 4
+        runtime: 120 
+        mem: "10GB" 
+        cpus_per_task: 3
         nodes: 1
         slurm_extra: "'--qos=normal' '--output=logs/slurm/fastq_screen_index/%J.log' '--error=logs/slurm/fastq_screen_index/%J.err'"
     run_fastq_screen: ## might have to change qos=long

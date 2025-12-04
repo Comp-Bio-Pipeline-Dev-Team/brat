@@ -238,7 +238,7 @@ rule run_fastq_screen:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.{read}.fastq_screen.log")
     params:
         n_threads = 11, ## currently threads=num cpus but might be changed
-        subset_num = 0 ## this will be the default!! - subset = number of reads, fastq screen default is 100000
+        subset_num = FQSCREEN_SUBSET_NUM ## 0 is the default (all reads)!! - subset = number of reads, fastq screen default is 100000
     shell:
         """
         ## pulling fastq screen version for report

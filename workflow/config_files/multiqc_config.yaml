@@ -63,7 +63,18 @@ section_comments:
     here you want to check that the majority of your reads map to your organism of interest
     (ideally >70%), and that there is minimal contamination from other organisms.
     if you see a significant percentage of reads mapping to unexpected organisms,
-    you may want to investigate further and consider removing those reads from your dataset.
+    you may want to investigate further and consider removing those reads from your dataset.  
+
+    command used for fastq_screen on trimmed reads:
+
+    <pre><code>
+    fastq_screen --outdir outDir \ 
+                 --subset fastq_screen_subset_num \ ## the number of reads to screen (0 = all), fastq_screen default is 100000 
+                 --conf fastq_screen_config_file \ ## we put this together for you!
+                 --threads n_threads \ 
+                 --nohits \  ## extract reads that don't map to any of the reference genomes
+                 trimmedReadsFile
+    </code></pre>
   fastqc_raw_reads: |
     here you want to check that base quality/confidence and average sequence quality have high Phred scores,
     (in the green section). the max Phred score is 38-40 depending on the chemistry color used in Illumina sequencing.

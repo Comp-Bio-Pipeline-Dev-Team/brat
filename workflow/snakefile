@@ -10,7 +10,7 @@ import glob
 from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_to_skip, picard_calculate_strandedness, concat_picard_insert_size, concat_star_log, specified_strandedness
 
 RAW_SEQ_IN =  config['raw_seq_in']
-METADATA = pd.read_csv(config['metadata_file'], sep='\t')
+METADATA = pd.read_csv(config['metadata_file'], sep=',')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
 ## i know what these are since I hard coded them as the output(s) of cutadapt rule
 TRIMMED_READS = ["R1", "R2"]
@@ -19,6 +19,7 @@ TRIMMED_READS = ["R1", "R2"]
 FQSCREEN_FILE = config['fastq_screen_genomes']
 FQSCREEN_DF = pd.read_csv(config['fastq_screen_genomes'], sep=',')
 FQSCREEN_GENOMES = FQSCREEN_DF['genome_name'].tolist()
+FQSCREEN_SUBSET_NUM = config['fastq_screen_subset_num']
 
 ## allows for output directory name to be specified by user
 ## otherwise defaults to "brat_out"
