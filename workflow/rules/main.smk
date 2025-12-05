@@ -311,7 +311,7 @@ rule generate_star_index:
     params:
         input_read_length = READ_LENGTH,
         n_threads = 22, ## n_threads = cpus_per_task*2
-        feature_type = "exon"
+        feature_type = "exon" ## could make this a user input parameter in config file if needed
     shell:
         """
         if [ {params.input_read_length} -eq 0 ];
