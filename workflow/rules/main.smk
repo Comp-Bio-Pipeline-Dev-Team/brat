@@ -311,7 +311,7 @@ rule generate_star_index:
     params:
         input_read_length = READ_LENGTH,
         n_threads = 22, ## n_threads = cpus_per_task*2
-        feature_type = "exon" ## could make this a user input parameter in config file if needed
+        feature_type = STAR_FEATURE_TYPE ## default = 'exon', name of exons assigned to transcripts in gtf
     shell:
         """
         if [ {params.input_read_length} -eq 0 ];
@@ -373,6 +373,7 @@ rule run_star_alignment:
         input_read_length = READ_LENGTH,
         n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
         star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."), ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
+        annot_col_name = ANNOT_COL_NAME,
         user_added_starParams = EXTRA_STAR_PARAMS
     shell:
         """
@@ -398,6 +399,7 @@ rule run_star_alignment:
              --genomeDir {input.star_genome_index_dir} \
              --readFilesCommand zcat \
              --sjdbGTFfile {input.annotFile} \
+             --sjdbGTFtagExonParentGene {params.annot_col_name} \
              --readFilesIn {input.forwardTrimmed} {input.reverseTrimmed} \
              --outFileNamePrefix {params.star_sample_prefix} \
              --outSAMtype BAM SortedByCoordinate \

@@ -1,1 +1,3 @@
-profile: fake
+## workflow profile for local execution of pipeline (its not as complicated since you dont have to deal w slurm)
+## idk what else to put in here 
+cores: 4

@@ -44,6 +44,10 @@ def get_args():
     parser.add_argument("--annot_col_name",
                         help="The column name in the gtf file that contains the gene names, default is gene_id.",
                         default="gene_id")
+    parser.add_argument("--transcript_type",
+                        help="The type of transcripts in the gtf file that you want your reads aligned to, default is exon. \
+                              Note: exon is recommended for most use cases, unless using bacterial/viral genome gtf files.",
+                        default="exon")
     parser.add_argument("--read_length",
                         help="The length of the reads, if not specified, the pipeline will infer read length.",
                         default=0)
@@ -156,7 +160,8 @@ def create_config_file(config_path,
                      "deployment_method": "singularity" if args.use_singularity else "conda",
                      "multiqc_config_file": multiqc_config_dest,
                      "fastq_screen_genomes": args.fastq_screen_genomes,
-                     "fastq_screen_subset_num": int(args.fastq_screen_subset_num)}
+                     "fastq_screen_subset_num": int(args.fastq_screen_subset_num),
+                     "star_feature_type": args.transcript_type}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -168,11 +173,12 @@ def get_run_info(args):
     Metadata File:                      {args.metadata_file}
     Snakemake Profile:                  {args.profile}
     FASTQ Screen Genomes File:          {args.fastq_screen_genomes}
-    Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == 0 else args.fastq_screen_subset_num}
+    Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == '0' else args.fastq_screen_subset_num}
     Genome Used:                        {args.genome_name}
     Genome FASTA:                       {args.genome_fasta}
     Annotation File (GTF):              {args.gtf_file}
     Annotation Gene Name Column:        {args.annot_col_name}
+    Annotation Transcript Type:         {args.transcript_type}
     Raw Sequence Read Length:           {args.read_length}
     Picard RefFlat File:                {args.refflat}
     Picard Ribosomal Intervals File:    {args.ribosomal_int_list}
@@ -193,7 +199,7 @@ def get_run_info(args):
     
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
-    yaml.width = 100000 ## make sure long lines dont get wrapped
+    yaml.width = 1000000 ## make sure long lines dont get wrapped
     tmp_yml_path = "tmp.brat/tmp.yml"
     with open(tmp_yml_path, "w") as f:
         yaml.dump(config_dict, f)
