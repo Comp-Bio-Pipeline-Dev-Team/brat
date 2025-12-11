@@ -1,3 +1,4 @@
 ## workflow profile for local execution of pipeline (its not as complicated since you dont have to deal w slurm)
-## idk what else to put in here 
+## idk what else to put in here
+## parameters specified here will override those in the actual snakefile  
 cores: 4

@@ -6,13 +6,9 @@ channels:
 dependencies:
   - python>=3.11
   - snakemake=8.27.1
-  - pandas
-  - argparse
-  - pathlib
-  - subprocess
-  - pip
+  - pandas=2.2.3
+  - argparse-dataclass=2.0.0
+  - pip=25.3
   - pip:
-    - ruamel.yaml
-    - yq
-    - snakemake-executor-plugin-slurm
-    - snakemake-storage-plugin-fs
+    - ruamel-yaml==0.18.15
+    - snakemake-executor-plugin-slurm==2.0.3
