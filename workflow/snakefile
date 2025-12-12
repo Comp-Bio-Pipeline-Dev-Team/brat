@@ -1,5 +1,3 @@
-## i created this toy snakefile to test out big changes to how the snakefile is structured (i.e. creating subworkflows for rules)
-
 from os.path import join as pj
 from os.path import basename
 from os.path import exists
@@ -39,7 +37,6 @@ MODULE_LIST = ["pretrimming_fastqc",
 
 ## allows flexibility in the picard command between conda and singularity deployments
 ## conda version of picard doesnt't need jar file specified, singularity does
-## idk if putting the {params.jar_file} in the command here will work the way I want it to.. update: it didnt
 if config["deployment_method"] == "singularity":
     PICARD_CMD = "java -jar /opt/picard/picard.jar"
 else:
@@ -81,7 +78,7 @@ sample_fp_dict = make_fp_dict(metadata_df=METADATA,
                               dataset_dir=RAW_SEQ_IN)
 
 
-## conda environment
+## conda environments
 ## need to go up a level since sub workflows are in rules/ subdirectory
 ## not sure if this will apply to anything else..I'm a little confused about it 
 FASTQC_CONDA = "../envs/fastqc_v0.12.1.yml"
@@ -92,7 +89,7 @@ STAR_CONDA = "../envs/star_v2.7.11b.yml"
 PICARD_CONDA = "../envs/picard_v2.27.5.yml"
 RSEM_CONDA = "../envs/rsem_v1.3.3.yml"
 
-## singularities (preferred) - NEED TO DEBUG THIS ON ALPINE
+## singularity images (preferred)
 UBUNTU_SING = "docker://madiapgar/bulk_rna_seq:ubuntu-v24.04"
 FASTQC_SING = "docker://madiapgar/bulk_rna_seq:fastqc-v0.12.1"
 MULTIQC_SING = "docker://madiapgar/bulk_rna_seq:multiqc-v1.30"
@@ -114,10 +111,6 @@ def pull_rawSeq_fps(wildcards):
     raw_files = sample_fp_dict[wildcards.sample]
     return(raw_files)
 
-
-# Set apptainer bindings NOT A PERMANENT SOLUTION
-## idk if this is going to work
-##os.environ["APPTAINER_BIND"] = "/scratch/alpine/mapgar@xsede.org:/scratch/alpine/mapgar@xsede.org"
 
 ## output file lists for rule all
 main_out = [expand(pj(OUT_DIR_NAME, "pretrimming_fastqc/{sample}/"),

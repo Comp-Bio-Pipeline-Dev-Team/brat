@@ -2,11 +2,11 @@
 
 # script to run brat (bulk rna-seq analysis tool)
 
-## the python script needs to be verified as an executable!:
-## also need to add path to folder where script lives to your global path like so:
-##chmod +x ~/brat/brat && echo 'export PATH=/$HOME/brat/:$PATH' >> ~/.bashrc && source ~/.bashrc
+## need to add path to brat to your global path like so:
+## echo 'export PATH=/$HOME/brat/:$PATH' >> ~/.bashrc && source ~/.bashrc
 
-## activate brat conda environment
+## install and activate brat conda environment
+conda env create -f 'brat.yml' -n brat_v1.0.0
 conda activate brat_v1.0.0
 
 ## run brat!
@@ -15,11 +15,13 @@ brat \
     --metadata_file 'metadata.csv' \
     --out_dir_name 'brat_out' \ ## this is the default name, can be changed 
     --profile 'mylocal_profile.yml' \ ## local execution profile
-    --fastq_screen_genomes 'fastq_screen_genomes.csv' \ ## fastq screen contaminants 
+    --fastq_screen_genomes 'fastq_screen_genomes.csv' \ ## fastq screen contaminants
+    --fastq_screen_subset_num 0 \ ## number of reads to use for fastq screen 
     --genome_fasta 'GRCh38.p14.genome.fa' \ ## the genome FASTA for your samples
     --genome_name 'GRCh38.p14' \ ## the name of this genome
     --gtf_file 'gencode.v48.annotation.gtf' \ ## the annotation file for your genome
     --annot_col_name 'gene_name' \ ## default is gene_id, this will work for most annotation files except for gencode ones
+    --transcript_type 'exon' \ ## default is exon, this will work for most annotation files except for bacterial/viral ones
     --read_length 0 \ ## default, we will calculate the read length for you unless specified
     --refflat 'gencode.v48.annotation.refflat' \ ## picard refFlat file
     --ribosomal_int_list 'GRCh38.p14_ribosomal_interval_list_with_header.txt' \ ## picard rRNA interval list
