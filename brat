@@ -9,6 +9,8 @@ from os.path import exists
 from ruamel.yaml import YAML
 from ruamel.yaml.scalarstring import SingleQuotedScalarString
 
+__version__ = "1.0.0"
+
 yaml = YAML()
 
 def get_args():
@@ -22,14 +24,12 @@ def get_args():
     parser.add_argument("--out_dir_name",
                         help="The name of the output directory, default is 'brat_out'.",
                         default="brat_out")
-    ## need to figure out the default profile for this!! (local execution?)
     parser.add_argument("--profile",
                         help="The filepath to the snakemake profile .yaml file you want to use.")
-    ## might need to change the link for this!!
     parser.add_argument("--fastq_screen_genomes",
                         help="The filepath to the .csv file containing names/urls to fastq screen possible contaminant genomes. \
                               The file must contain two columns: 'genome_name' and 'url'. A pre-built .csv file is provided for you \
-                              in the github repo at: https://github.com/Comp-Bio-Pipeline-Dev-Team/brat.")
+                              in the github repo at: https://github.com/Comp-Bio-Pipeline-Dev-Team/brat/files_for_users.")
     parser.add_argument("--fastq_screen_subset_num",
                         help="The number of reads to use for fastq screen contamination estimation, default is 0 (0 means all reads). \
                               Note: using all reads can be very slow for large datasets, fastq_screen default is 100000 reads.",
@@ -78,6 +78,9 @@ def get_args():
                         help="If this parameter is specified, you can practice running the workflow without \
                               actually starting it",
                         action='store_true')
+    parser.add_argument("--version", "-v",
+                        action="version",
+                        version=f"%(prog)s {__version__}")
     return parser.parse_args()
 
 ## functions
@@ -188,7 +191,8 @@ def get_run_info(args):
     Additional RSEM Parameters:         {args.extra_rsem_params}
     Latency Wait (secs):                {args.latency_wait}
     Deployment Method:                  {'singularity' if args.use_singularity else 'conda'}
-    Dry Run:                            {'True' if args.dry_run else 'False'}"""
+    Dry Run:                            {'True' if args.dry_run else 'False'}
+    Version:                            {__version__}"""
 
     ## print run config to console
     print(f"""Running with config:\n    {config_text}""")
