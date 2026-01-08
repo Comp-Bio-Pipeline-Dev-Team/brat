@@ -17,7 +17,7 @@ rule run_pretrimming_fastqc:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.fastqc1.log")
     params:
-        threads = 2
+        n_cores = CORES
     shell:
         """
         echo "running fastqc"
@@ -25,9 +25,12 @@ rule run_pretrimming_fastqc:
         ## getting fastqc version for multiqc report
         ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi 
+
         mkdir {output.outDir}
 
-        fastqc {input.inFiles} -o {output.outDir} --threads {params.threads}
+        fastqc {input.inFiles} -o {output.outDir} --threads ${{nThreads}}
         """
 
 
@@ -62,8 +65,6 @@ rule run_pretrimming_multiqc:
         multiqc {input.inDirs} --force -o {params.outDir} --filename {params.multiqcFilename}
         """
 
-## {params.inDir}*/
-
 
 ## had to add set +o pipefail; to beginning of totalScores command so that snakemake doesn't detect non-zero error codes and fail
 ## (snakemake was detecing 141 error codes for first two steps in pipe bc pipe is so long they complete before later steps do)
@@ -90,7 +91,8 @@ rule run_cutadapt:
         adapter_threePrime = "AGATCGGAAGAG", ## do i need to put this in the config file?
         qualTrim = 30,
         minReadLen = 10,
-        n_threads = 4, ## n_threads = cpus_per_task*2
+        n_cores = CORES,
+        ##n_threads = 4, ## n_threads = cpus_per_task*2
         user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS
     shell:
         """
@@ -109,11 +111,14 @@ rule run_cutadapt:
         ## getting cutadapt version for multiqc report
         ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+
         cutadapt -a {params.adapter_threePrime} \
                  -A {params.adapter_threePrime} \
                  "${{chemistryFlag}}" \
                  --minimum-length={params.minReadLen} \
-                 -j {params.n_threads} \
+                 -j ${{nThreads}} \
                  --pair-filter=any \
                  -o {output.forwardTrimmed} \
                  -p {output.reverseTrimmed} {params.user_added_cutadaptParams} \
@@ -237,17 +242,21 @@ rule run_fastq_screen:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.{read}.fastq_screen.log")
     params:
-        n_threads = 11, ## currently threads=num cpus but might be changed
+        n_cores = CORES,
+        ##n_threads = 11, ## currently threads=num cpus but might be changed
         subset_num = FQSCREEN_SUBSET_NUM ## 0 is the default (all reads)!! - subset = number of reads, fastq screen default is 100000
     shell:
         """
         ## pulling fastq screen version for report
         ( echo -n "fastq screen: "; printf "\"%s\"\n" "$(fastq_screen --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+
         fastq_screen --outdir {output.outDir} \
                      --subset {params.subset_num} \
                      --conf {input.fqScreen_config} \
-                     --threads {params.n_threads} \
+                     --threads ${{nThreads}} \
                      --nohits \
                      {input.trimmedReads}
         """
@@ -310,7 +319,8 @@ rule generate_star_index:
         STAR_CONDA
     params:
         input_read_length = READ_LENGTH,
-        n_threads = 22, ## n_threads = cpus_per_task*2
+        n_cores = CORES,
+        ##n_threads = 21, ## n_threads = cpus_per_task*1.5
         feature_type = STAR_FEATURE_TYPE ## default = 'exon', name of exons assigned to transcripts in gtf
     shell:
         """
@@ -336,10 +346,13 @@ rule generate_star_index:
         fi
         echo "Using genome index size of: ${{genome_indexSize}}"
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 1.5" | bc -l ); else nThreads={params.n_cores}; fi
+
         ## making output directory
         mkdir -p {output.star_index_dir}
 
-        STAR --runThreadN {params.n_threads} \
+        STAR --runThreadN ${{nThreads}} \
              --runMode genomeGenerate \
              --genomeDir {output.star_index_dir} \
              --genomeFastaFiles {input.fastaFile} \
@@ -371,7 +384,8 @@ rule run_star_alignment:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.star.log")
     params:
         input_read_length = READ_LENGTH,
-        n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
+        n_cores = CORES,
+        ##n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
         star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."), ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
         annot_col_name = ANNOT_COL_NAME,
         user_added_starParams = EXTRA_STAR_PARAMS
@@ -392,10 +406,13 @@ rule run_star_alignment:
         ## getting star version for multiqc report
         ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 1.5" | bc -l ); else nThreads={params.n_cores}; fi
+
         mkdir -p {output.star_out_dir}
 
         STAR --runMode alignReads \
-             --runThreadN {params.n_threads} \
+             --runThreadN ${{nThreads}} \
              --genomeDir {input.star_genome_index_dir} \
              --readFilesCommand zcat \
              --sjdbGTFfile {input.annotFile} \

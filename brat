@@ -74,6 +74,10 @@ def get_args():
                               instead of conda environments (default). NOTE: apptainer MUST be installed to run this \
                               pipeline with singularity!",
                         action='store_true')
+    parser.add_argument("--hyperthreaded",
+                        help="If this parameter is specified, your computer supports hyperthreading and the workflow will \
+                              run with hyperthreading enabled (1.5 threads per core). If you're unsure, do NOT include this parameter.",
+                        action='store_true')                     
     parser.add_argument("--dry_run",
                         help="If this parameter is specified, you can practice running the workflow without \
                               actually starting it",
@@ -163,7 +167,8 @@ def create_config_file(config_path,
                      "multiqc_config_file": multiqc_config_dest,
                      "fastq_screen_genomes": args.fastq_screen_genomes,
                      "fastq_screen_subset_num": int(args.fastq_screen_subset_num),
-                     "star_feature_type": args.transcript_type}
+                     "star_feature_type": args.transcript_type,
+                     "hyperthreaded": True if args.hyperthreaded else False}
     
     with open(config_path, 'w') as outfile:
         yaml.dump(config_params, outfile)
@@ -191,6 +196,7 @@ def get_run_info(args):
     Additional RSEM Parameters:         {args.extra_rsem_params}
     Latency Wait (secs):                {args.latency_wait}
     Deployment Method:                  {'singularity' if args.use_singularity else 'conda'}
+    Hyperthreading Enabled:             {'True' if args.hyperthreaded else 'False'}
     Dry Run:                            {'True' if args.dry_run else 'False'}
     Version:                            {__version__}"""
 

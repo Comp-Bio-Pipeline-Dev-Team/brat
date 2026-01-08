@@ -7,6 +7,12 @@ import re
 import glob
 from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_to_skip, picard_calculate_strandedness, concat_picard_insert_size, concat_star_log, specified_strandedness
 
+## figuring out number of threads to pass to various rules based on user input re: hyperthreading
+## does your computer support hyperthreading? if so, snakemake will run with 1.5 threads per core
+## if not, it will run with 1 thread per core
+CORES = None if config['hyperthreaded'] == True else workflow.cores
+##print(workflow.cores)
+
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep=',')
 SAMPLE_LIST = METADATA['sampleid'].tolist()

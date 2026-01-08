@@ -53,7 +53,8 @@ rule run_rsem_quantification:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log")
     params:
-        nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
+        n_cores = CORES,
+        ##nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
         current_sample = lambda wc: wc.get("sample"),
         user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample")), ## need to check that this will pull the wildcard appropriately
         rsem_index_name = ALIGN_INDEX_NAME,
@@ -78,11 +79,14 @@ rule run_rsem_quantification:
         ## getting rsem version for multiqc report
         ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
+        ## calculating number of threads to use
+        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+
         mkdir -p {output.rsem_out_dir}
 
         rsem-calculate-expression --paired-end \
                                   --bam \
-                                  -p {params.nthreads} \
+                                  -p ${{nThreads}} \
                                   {params.user_added_rsemParams} \
                                   --forward-prob ${{strandedness}} \
                                   --time {input.aligned_transcriptBam} {input.rsem_index_dir}/{params.rsem_index_name} {output.rsem_out_dir}/{params.current_sample}
