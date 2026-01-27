@@ -6,6 +6,4 @@ channels:
 dependencies:
   - python>=3.11
   - picard=2.27.5
-##  - pip
-##  - pip:
-##      - snakemake==8.27.1
+  - bc=1.07.1

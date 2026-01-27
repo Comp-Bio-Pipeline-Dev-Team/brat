@@ -11,13 +11,17 @@ from snake_utils.snake_functions import comb_filepaths, make_fp_dict, get_lines_
 ## does your computer support hyperthreading? if so, snakemake will run with 1.5 threads per core
 ## if not, it will run with 1 thread per core
 CORES = None if config['hyperthreaded'] == True else workflow.cores
-##print(workflow.cores)
 
 RAW_SEQ_IN =  config['raw_seq_in']
 METADATA = pd.read_csv(config['metadata_file'], sep=',')
 SAMPLE_LIST = METADATA['sampleid'].tolist()
 ## i know what these are since I hard coded them as the output(s) of cutadapt rule
 TRIMMED_READS = ["R1", "R2"]
+
+## cutadapt trimming parameters (default values if user does not specify in config)
+TRIM_ADAPTER = config['adapter_seq']
+TRIM_QUAL_SCORE = config['qual_trim_score']
+MIN_READ_LEN = config['min_read_length']
 
 ## getting fastq screen genome names from url file
 FQSCREEN_FILE = config['fastq_screen_genomes']
@@ -43,11 +47,15 @@ MODULE_LIST = ["pretrimming_fastqc",
 
 ## allows flexibility in the picard command between conda and singularity deployments
 ## conda version of picard doesnt't need jar file specified, singularity does
+## also allows for different cpu command based on deployment method (env variables are not passed the same way in singularity vs conda)
 if config["deployment_method"] == "singularity":
     PICARD_CMD = "java -jar /opt/picard/picard.jar"
+    ##PROC_CMD = "$(nproc)"
 else:
     PICARD_CMD = "picard"
 
+## trying this with adding --apptainer-args to snakemake command so var is consistent per deployment method
+PROC_CMD = "${SLURM_CPUS_PER_TASK}"
 
 ## user input additional parameters for cutadapt, star, and rsem (optional)
 EXTRA_CUTADAPT_PARAMS = config['cutadapt_params']

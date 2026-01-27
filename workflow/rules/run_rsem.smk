@@ -1,3 +1,4 @@
+## global variables within this rule: ALIGN_INDEX_NAME, REF_DIR, ANNOT_COL_NAME
 ## wont want to run this rule unless its needed - config option/looking at star log files for %uniquely_mapped v %percent_multimapped v %unmapped thresholds for when its run
 ## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
 ## finally works using outside fasta/gtf files with above rule (yay!!)
@@ -17,23 +18,24 @@ rule generate_rsem_index:
         genome_annot_col = ANNOT_COL_NAME ## gene_id should be the default!! only changed based on user input!
     shell:
         """
-        if [ {params.genome_annot_col} == "gene_id" ];
+        if [ {ANNOT_COL_NAME} == "gene_id" ];
         then
             annotFile={input.annotFile}
             echo "Using gene_id column in .gtf file for sequence annotations!"
         else
-            cp {input.annotFile} {params.ref_directory}/tmp.gtf
-            sed -i -e 's/gene_id/tmp_gene_id/g' -e 's/{params.genome_annot_col}/gene_id/g' {params.ref_directory}/tmp.gtf
-            annotFile={params.ref_directory}/tmp.gtf
-            echo "Using {params.genome_annot_col} column in .gtf file for sequence annotations!"
+            cp {input.annotFile} {REF_DIR}/tmp.gtf
+            sed -i -e 's/gene_id/tmp_gene_id/g' -e 's/{ANNOT_COL_NAME}/gene_id/g' {REF_DIR}/tmp.gtf
+            annotFile={REF_DIR}/tmp.gtf
+            echo "Using {ANNOT_COL_NAME} column in .gtf file for sequence annotations!"
         fi
 
         mkdir -p {output.rsem_index_dir}
 
-        rsem-prepare-reference --gtf ${{annotFile}} {input.fastaFile} {output.rsem_index_dir}/{params.rsem_index_name}
+        rsem-prepare-reference --gtf ${{annotFile}} {input.fastaFile} {output.rsem_index_dir}/{ALIGN_INDEX_NAME}
         """
 
 
+## global variables within this rule: PROC_CMD, CORES, ALIGN_INDEX_NAME, EXTRA_RSEM_PARAMS
 ## rsem 
 ## need to include the genome name prefix for the rsem index files or else it loses its mind
 ## have to also provide the file prefix with the output directory path (I forgot this)
@@ -54,7 +56,6 @@ rule run_rsem_quantification:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log")
     params:
         n_cores = CORES,
-        ##nthreads = 6, ## nthreads = cpus_per_task*2 (for now)
         current_sample = lambda wc: wc.get("sample"),
         user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample")), ## need to check that this will pull the wildcard appropriately
         rsem_index_name = ALIGN_INDEX_NAME,
@@ -80,15 +81,16 @@ rule run_rsem_quantification:
         ( echo -n "rsem: "; printf "\"%s\"\n" "$(rsem-calculate-expression --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 2" | bc -l ); else nThreads={CORES}; fi
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for RSEM quantification"
 
         mkdir -p {output.rsem_out_dir}
 
         rsem-calculate-expression --paired-end \
                                   --bam \
                                   -p ${{nThreads}} \
-                                  {params.user_added_rsemParams} \
+                                  {EXTRA_RSEM_PARAMS} \
                                   --forward-prob ${{strandedness}} \
-                                  --time {input.aligned_transcriptBam} {input.rsem_index_dir}/{params.rsem_index_name} {output.rsem_out_dir}/{params.current_sample}
+                                  --time {input.aligned_transcriptBam} {input.rsem_index_dir}/{ALIGN_INDEX_NAME} {output.rsem_out_dir}/{params.current_sample}
         
         """

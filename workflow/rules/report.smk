@@ -1,5 +1,6 @@
 ## sub-workflow to generate the overall multiqc report for all analysis run 
 
+## global variables within this rule: SOFTWARE_LOG_DIR, OUT_DIR_NAME, MULTIQC_CONFIG_PATH
 ## take previous multiqc outputs out of rule since they may mess up the report??
 rule create_report:
     input:
@@ -23,7 +24,7 @@ rule create_report:
     shell:
         """
         ## new way (a lot less code) - create a yaml file with software versions for multiqc to read directly
-        cat {params.softwareLogs}/*.log | sort | uniq > {params.outDir}/brat_mqc_versions.yml
+        cat {SOFTWARE_LOG_DIR}/*.log | sort | uniq > {OUT_DIR_NAME}/brat_mqc_versions.yml
 
-        multiqc {input.moduleDirs} {input.fastqScreenDirs} {params.outDir}/brat_mqc_versions.yml --config {params.multiqc_config} -o {params.outDir} --filename {params.multiqcFilename}
+        multiqc {input.moduleDirs} {input.fastqScreenDirs} {OUT_DIR_NAME}/brat_mqc_versions.yml --config {MULTIQC_CONFIG_PATH} -o {OUT_DIR_NAME} --filename {params.multiqcFilename}
         """

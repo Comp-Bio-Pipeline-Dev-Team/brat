@@ -6,9 +6,7 @@ channels:
 dependencies:
   - python=3.10
   - cutadapt=4.2
-##  - pip
-##  - pip:
-##    - snakemake==7.32.4
+  - bc=1.07.1
 
 ## cutadapt v4.2 only supports python v3.10 and snakemake v7.32.4
 ## i don't think this will cause many problems but idk

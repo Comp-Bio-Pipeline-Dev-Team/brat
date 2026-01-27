@@ -6,4 +6,5 @@ channels:
 dependencies:
   - fastq-screen=0.16.0
   - bowtie2=2.5.4
+  - bc=1.07.1
   ##- python>=3.11 ## do i need python for fastq-screen? if so, add python version here - i dont think i need it but leaving here just in case 

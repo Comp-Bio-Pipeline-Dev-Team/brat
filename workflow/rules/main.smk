@@ -3,6 +3,7 @@
 ## output directory per samples
 ## can keep threads=2 and ntasks=1
 ##### madis notes: #####
+## global variables used in this rule: CORES
 ## both examples under "input:" work to pull both forward/reverse reads in for each sample 
 ## could also do this: inFiles = expand(pj(RAW_SEQ_IN, "{{sample}}_{read}.fastq.gz"), read=READS) 
 rule run_pretrimming_fastqc:
@@ -26,14 +27,15 @@ rule run_pretrimming_fastqc:
         ( echo -n "fastqc: "; printf "\"%s\"\n" "$(fastqc --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi 
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 2" | bc -l ); else nThreads={CORES}; fi 
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for fastqc"
 
         mkdir {output.outDir}
 
         fastqc {input.inFiles} -o {output.outDir} --threads ${{nThreads}}
         """
 
-
+## global variables within this rule: OUT_DIR_NAME
 ## took '.' at end of multiqc command out bc i think its causing problems with the report generation - it was
 ## added "--force" to make multiqc overwrite directories that already exist bc snakemake likes to create the output directory before
 ## multiqc does so multiqc was naming it something different and snakemake was failing out bc it couldn't find the file (yay)
@@ -62,10 +64,10 @@ rule run_pretrimming_multiqc:
         ## getting multiqc version for multiqc report
         ( echo -n "multiqc: "; printf "\"%s\"\n" "$(multiqc --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
-        multiqc {input.inDirs} --force -o {params.outDir} --filename {params.multiqcFilename}
+        multiqc {input.inDirs} --force -o {OUT_DIR_NAME} --filename {params.multiqcFilename}
         """
 
-
+## global variables within this rule: CORES, TRIM_ADAPTER, TRIM_QUAL_SCORE, MIN_READ_LEN, PROC_CMD, EXTRA_CUTADAPT_PARAMS
 ## had to add set +o pipefail; to beginning of totalScores command so that snakemake doesn't detect non-zero error codes and fail
 ## (snakemake was detecing 141 error codes for first two steps in pipe bc pipe is so long they complete before later steps do)
 ## added '<' to zcat command so its portable to macos, macos prefers gzcat or zcat < but not plain zcat (its dumb)
@@ -88,11 +90,7 @@ rule run_cutadapt:
         error = pj(OUT_DIR_NAME, "cutadapt/{sample}/{sample}_cutadapt.err"),
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.cutadapt.log")
     params:
-        adapter_threePrime = "AGATCGGAAGAG", ## do i need to put this in the config file?
-        qualTrim = 30,
-        minReadLen = 10,
         n_cores = CORES,
-        ##n_threads = 4, ## n_threads = cpus_per_task*2
         user_added_cutadaptParams = EXTRA_CUTADAPT_PARAMS
     shell:
         """
@@ -102,26 +100,27 @@ rule run_cutadapt:
         then
             # NovaSeq now bins qc values to 2, 12, 23, 37 (if using NovaSeq), also use --nextseq-trim= instead of -q since NovaSeq is 2 color chemistry
             echo "Quality scores are binned to 4 values (your score = ${{totalScores}}) therefore, using 2-color chemistry; running --nextseq-trim instead of -q"
-            chemistryFlag="--nextseq-trim={params.qualTrim}"
+            chemistryFlag="--nextseq-trim={TRIM_QUAL_SCORE}"
         else
             echo "Quality scores are not binned (your score = ${{totalScores}}), therefore use -q"
-            chemistryFlag="-q {params.qualTrim}"
+            chemistryFlag="-q {TRIM_QUAL_SCORE}"
         fi
 
         ## getting cutadapt version for multiqc report
         ( echo -n "cutadapt: "; printf "\"%s\"\n" "$(cutadapt --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 2" | bc -l ); else nThreads={CORES}; fi
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for cutadapt"
 
-        cutadapt -a {params.adapter_threePrime} \
-                 -A {params.adapter_threePrime} \
+        cutadapt -a {TRIM_ADAPTER} \
+                 -A {TRIM_ADAPTER} \
                  "${{chemistryFlag}}" \
-                 --minimum-length={params.minReadLen} \
+                 --minimum-length={MIN_READ_LEN} \
                  -j ${{nThreads}} \
                  --pair-filter=any \
                  -o {output.forwardTrimmed} \
-                 -p {output.reverseTrimmed} {params.user_added_cutadaptParams} \
+                 -p {output.reverseTrimmed} {EXTRA_CUTADAPT_PARAMS} \
                  {input.inFiles[0]} {input.inFiles[1]}>{log.log} \
                  2>{log.error} 
         """
@@ -156,6 +155,7 @@ use rule run_pretrimming_multiqc as run_posttrimming_multiqc with:
         multiqcFilename = "posttrimming_multiqc_report.html"
 
 
+## global variables within this rule: FQSCREEN_GENOMES
 ## fastq screen config file
 ## will snakemake be mad about the list input? we'll find out...
 ## update: snakemake was mad ab it so added list to params and took out input
@@ -174,7 +174,7 @@ rule create_fastq_screen_config:
         ## adding call for bowtie2
         printf "BOWTIE2\t bowtie2\n" > {output.fqScreen_config}
 
-        bashGenomes=({params.genomeList})
+        bashGenomes=({FQSCREEN_GENOMES})
 
         for genome in ${{bashGenomes[*]}};
         do
@@ -224,6 +224,7 @@ rule generate_fastq_screen_index:
         """
 
 
+## global variables within this rule: FQSCREEN_SUBSET_NUM, CORES, PROC_CMD
 ## actually running fastq screen 
 ## every single trimmed fastq file needs to go into this rule separately 
 ## hopefully snakemake isnt mad about all the wildcards in this rule...
@@ -243,7 +244,6 @@ rule run_fastq_screen:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.{read}.fastq_screen.log")
     params:
         n_cores = CORES,
-        ##n_threads = 11, ## currently threads=num cpus but might be changed
         subset_num = FQSCREEN_SUBSET_NUM ## 0 is the default (all reads)!! - subset = number of reads, fastq screen default is 100000
     shell:
         """
@@ -251,10 +251,11 @@ rule run_fastq_screen:
         ( echo -n "fastq screen: "; printf "\"%s\"\n" "$(fastq_screen --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 2" | bc -l ); else nThreads={params.n_cores}; fi
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 2" | bc -l ); else nThreads={CORES}; fi
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for fastq screen"
 
         fastq_screen --outdir {output.outDir} \
-                     --subset {params.subset_num} \
+                     --subset {FQSCREEN_SUBSET_NUM} \
                      --conf {input.fqScreen_config} \
                      --threads ${{nThreads}} \
                      --nohits \
@@ -262,7 +263,7 @@ rule run_fastq_screen:
         """
 
 
-
+## global variables within this rule: REF_DIR, NEW_FASTA_PATH, NEW_ANNOT_PATH, NEW_PICARD_REFFLAT, NEW_PICARD_RRNA_INTERVAL
 ## copy input fasta/gtf files into the test_snake_w_slurm (or whatever working) directory so bind points dont break
 ## symlinks for individual files didnt work bc symlink names are copied over but not the actual files (i.e. containers break the symlinks)
 rule copy_reference_files:
@@ -282,7 +283,7 @@ rule copy_reference_files:
         ref_directory = REF_DIR
     shell:
         """
-        mkdir -p {params.ref_directory}
+        mkdir -p {REF_DIR}
 
         refFileList=({input.fastaFile}
                      {input.annotFile}
@@ -295,14 +296,15 @@ rule copy_reference_files:
             fileName=$( basename ${{file}} )
 
             ## trying rsync with this instead of cp to see if it works better
-            rsync -av --progress ${{file}} {params.ref_directory}/${{fileName}}
+            rsync -av --progress ${{file}} {REF_DIR}/${{fileName}}
 
-            echo "Copying ${{fileName}} to {params.ref_directory}/!"
+            echo "Copying ${{fileName}} to {REF_DIR}/!"
         done
 
         """
 
 
+## global variables within this rule: READ_LENGTH, CORES, PROC_CMD, STAR_FEATURE_TYPE
 ## got errors about bc not being installed in container (it wasnt so thats fine) and out of memory error which was weird 
 ## increased memory to check if it does okay - needed 50GBs of memory 
 ## check if read length set to zero or do want to infer? can take user input parameter (greater than 0) - i cant remember why we were doing this
@@ -320,18 +322,17 @@ rule generate_star_index:
     params:
         input_read_length = READ_LENGTH,
         n_cores = CORES,
-        ##n_threads = 21, ## n_threads = cpus_per_task*1.5
         feature_type = STAR_FEATURE_TYPE ## default = 'exon', name of exons assigned to transcripts in gtf
     shell:
         """
-        if [ {params.input_read_length} -eq 0 ];
+        if [ {READ_LENGTH} -eq 0 ];
         then
             ## count read lengths in raw seq files for STAR
             readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
             overheadLength=$( echo "$((${{readLength}}-1))" )
             echo "Inferred sequence read length is: ${{overheadLength}}"
         else
-            overheadLength={params.input_read_length}
+            overheadLength={READ_LENGTH}
             echo "User input sequence read length is: ${{overheadLength}}"
         fi
 
@@ -347,7 +348,8 @@ rule generate_star_index:
         echo "Using genome index size of: ${{genome_indexSize}}"
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 1.5" | bc -l ); else nThreads={params.n_cores}; fi
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 1.5" | bc -l ); else nThreads={CORES}; fi
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for STAR genome generation"
 
         ## making output directory
         mkdir -p {output.star_index_dir}
@@ -357,12 +359,13 @@ rule generate_star_index:
              --genomeDir {output.star_index_dir} \
              --genomeFastaFiles {input.fastaFile} \
              --sjdbGTFfile {input.annotFile} \
-             --sjdbGTFfeatureExon {params.feature_type} \
+             --sjdbGTFfeatureExon {STAR_FEATURE_TYPE} \
              --sjdbOverhang ${{overheadLength}} \
              --genomeSAindexNbases ${{genome_indexSize}}
 
         """
 
+## global variables within this rule: READ_LENGTH, CORES, PROC_CMD, ANNOT_COL_NAME, EXTRA_STAR_PARAMS
 ## had to put user added star params on a separate line so that snakemake would parse the commands correctly - was excluding the first command before
 rule run_star_alignment:
     input:
@@ -384,22 +387,21 @@ rule run_star_alignment:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.star.log")
     params:
         input_read_length = READ_LENGTH,
-        n_cores = CORES,
-        ##n_threads = 18, ## n_threads = cpus_per_task*1.5, madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
-        star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."), ## may need another decoy here bc snakemake takes the front slash off of the output fp above (now the file names look funky)
+        n_cores = CORES, ## madi note: doubling the nthreads per cpu caused out of memory errors within the first minute of the job running
+        star_sample_prefix = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}."),
         annot_col_name = ANNOT_COL_NAME,
         user_added_starParams = EXTRA_STAR_PARAMS
     shell:
         """
         ## have to redo read length calculation, maybe not the best? but idk what else to do 
-        if [ {params.input_read_length} -eq 0 ];
+        if [ {READ_LENGTH} -eq 0 ];
         then
             ## count read lengths in raw seq files for STAR
             readLength=$( awk '{{print $5}}' {input.pretrimming_multiqc_report} | tail -n+2 | head -n 1 )
             overheadLength=$( echo "$((${{readLength}}-1))" )
             echo "Inferred sequence read length is: ${{overheadLength}}"
         else
-            overheadLength={params.input_read_length}
+            overheadLength={READ_LENGTH}
             echo "User input sequence read length is: ${{overheadLength}}"
         fi 
 
@@ -407,7 +409,8 @@ rule run_star_alignment:
         ( echo -n "star: "; printf "\"%s\"\n" "$(STAR --version 2>&1 | sed 's/[^0-9.]//g')" ) > {log.software_log} 2>&1
 
         ## calculating number of threads to use
-        if [ {params.n_cores} == "None" ]; then nThreads=$( echo "$(nproc) * 1.5" | bc -l ); else nThreads={params.n_cores}; fi
+        if [ {CORES} == "None" ]; then nThreads=$( echo "{PROC_CMD} * 1.5" | bc -l ); else nThreads={CORES}; fi
+        echo "Requested {CORES} cores, using ${{nThreads}} threads for STAR alignment"
 
         mkdir -p {output.star_out_dir}
 
@@ -416,17 +419,18 @@ rule run_star_alignment:
              --genomeDir {input.star_genome_index_dir} \
              --readFilesCommand zcat \
              --sjdbGTFfile {input.annotFile} \
-             --sjdbGTFtagExonParentGene {params.annot_col_name} \
+             --sjdbGTFtagExonParentGene {ANNOT_COL_NAME} \
              --readFilesIn {input.forwardTrimmed} {input.reverseTrimmed} \
              --outFileNamePrefix {params.star_sample_prefix} \
              --outSAMtype BAM SortedByCoordinate \
              --quantMode TranscriptomeSAM GeneCounts \
              --twopassMode Basic \
              --sjdbOverhang ${{overheadLength}} \
-             {params.user_added_starParams}
+             {EXTRA_STAR_PARAMS}
         """
 
 
+## global variables within this rule: PICARD_CMD
 ## rule for picard collect rna seq metrics!
 ## this works
 ## picard.jar file needs to be local, NOT in the container, probs will download it in the move_reference_files rule or have it prewrapped in the pipeline
@@ -455,7 +459,7 @@ rule run_picard_collect_rna_seq:
 
         mkdir -p {output.collect_rnaSeq_dir}
 
-        {params.command} CollectRnaSeqMetrics \
+        {PICARD_CMD} CollectRnaSeqMetrics \
              I={input.aligned_coordBam} \
              O={output.collect_rnaSeq_file} \
              REF_FLAT={input.refFlat_file} \
@@ -464,7 +468,7 @@ rule run_picard_collect_rna_seq:
         """
 
 
-
+## global variables within this rule: PICARD_CMD
 ## rule for picard collect insert size metrics !
 ## this works
 rule run_picard_collect_insert_size:
@@ -485,7 +489,7 @@ rule run_picard_collect_insert_size:
         """
         mkdir -p {output.insertSize_dir}
 
-        {params.command} CollectInsertSizeMetrics \
+        {PICARD_CMD} CollectInsertSizeMetrics \
              I={input.aligned_coordBam} \
              O={output.insertSize_file} \
              H={output.insertSize_histogram}

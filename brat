@@ -26,6 +26,16 @@ def get_args():
                         default="brat_out")
     parser.add_argument("--profile",
                         help="The filepath to the snakemake profile .yaml file you want to use.")
+    parser.add_argument("--adapter_seq",
+                        help="The adapter sequence to trim from reads, default is Illumina TruSeq adapter sequence.",
+                        default="AGATCGGAAGAG") 
+    parser.add_argument("--qual_trim_score",
+                        help="The quality score threshold for trimming low quality bases from the ends of reads, \
+                              default is 30.",
+                        default=30) 
+    parser.add_argument("--min_read_length",
+                        help="The minimum read length to keep after trimming, default is 10.",
+                        default=10) 
     parser.add_argument("--fastq_screen_genomes",
                         help="The filepath to the .csv file containing names/urls to fastq screen possible contaminant genomes. \
                               The file must contain two columns: 'genome_name' and 'url'. A pre-built .csv file is provided for you \
@@ -81,6 +91,10 @@ def get_args():
     parser.add_argument("--dry_run",
                         help="If this parameter is specified, you can practice running the workflow without \
                               actually starting it",
+                        action='store_true')
+    parser.add_argument("--unlock",
+                        help="If this parameter is specified, it will unlock the snakemake workflow in case it was \
+                              interrupted previously and left in a locked state.",
                         action='store_true')
     parser.add_argument("--version", "-v",
                         action="version",
@@ -152,6 +166,9 @@ def create_config_file(config_path,
     config_params = {"raw_seq_in": args.raw_seq_dir,
                      "metadata_file": args.metadata_file,
                      "out_dir": args.out_dir_name,
+                     "adapter_seq": args.adapter_seq,
+                     "qual_trim_score": int(args.qual_trim_score),
+                     "min_read_length": int(args.min_read_length),
                      "align_to_fasta": args.genome_fasta,
                      "align_to_name": args.genome_name,
                      "align_to_gtf": args.gtf_file,
@@ -179,6 +196,9 @@ def get_run_info(args):
     config_text = f"""Raw Sequence Directory:             {args.raw_seq_dir}
     Metadata File:                      {args.metadata_file}
     Snakemake Profile:                  {args.profile}
+    Adapter Sequence:                   {args.adapter_seq}
+    Trimming Quality Score:             {args.qual_trim_score}
+    Minimum Read Length After Trimming: {args.min_read_length}
     FASTQ Screen Genomes File:          {args.fastq_screen_genomes}
     Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == '0' else args.fastq_screen_subset_num}
     Genome Used:                        {args.genome_name}
@@ -235,6 +255,13 @@ def assemble_snake_command(snake_path,
         snake_command.extend(["--software-deployment-method", "apptainer"])
     else:
         snake_command.extend(["--software-deployment-method", "conda"])
+
+    ## transfer SLURM_CPUS_PER_TASK to singularity container if hyperthreading and singularity are both enabled
+    if args.hyperthreaded is True and args.use_singularity is True:
+        snake_command.extend(["--apptainer-args", "--env SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}"])
+
+    if args.unlock is True:
+        snake_command.append("--unlock")
     
     if args.dry_run is True:
         snake_command.append("--dry-run")
