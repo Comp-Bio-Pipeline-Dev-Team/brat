@@ -200,13 +200,13 @@ def get_run_info(args):
     Trimming Quality Score:             {args.qual_trim_score}
     Minimum Read Length After Trimming: {args.min_read_length}
     FASTQ Screen Genomes File:          {args.fastq_screen_genomes}
-    Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == '0' else args.fastq_screen_subset_num}
+    Number of Reads for FASTQ Screen:   {'all' if args.fastq_screen_subset_num == 0 else args.fastq_screen_subset_num}
     Genome Used:                        {args.genome_name}
     Genome FASTA:                       {args.genome_fasta}
     Annotation File (GTF):              {args.gtf_file}
     Annotation Gene Name Column:        {args.annot_col_name}
     Annotation Transcript Type:         {args.transcript_type}
-    Raw Sequence Read Length:           {args.read_length}
+    Raw Sequence Read Length:           {'default calculation' if args.read_length == 0 else args.read_length}
     Picard RefFlat File:                {args.refflat}
     Picard Ribosomal Intervals File:    {args.ribosomal_int_list}
     MultiQC Config File:                tmp.brat/multiqc_config.yaml
