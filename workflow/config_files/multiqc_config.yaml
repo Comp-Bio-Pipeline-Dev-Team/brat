@@ -11,14 +11,21 @@ fn_clean_sample_names: true
 disable_version_detection: true
 
 report_header_info:
-  - Analysis Run: "brat (Bulk Rna-seq Analysis Tool)"
+  - Analysis Run: "Bulk RNA-sequencing Analysis"
   - Contact Email: "madison.apgar@cuanschutz.edu"
   - Department: "Microbiology and Immunology"
-  - GitHub Repository: "https://github.com/Comp-Bio-Pipeline-Dev-Team/brat"
+  - GitHub Repository: <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat">click here</a>
 
-title: "brat run report"
-subtitle: "a detailed report of all analysis run" 
-intro_text: "i am some intro text that madi will eventually think of"
+title: "brat (Bulk Rna-seq Analysis Tool) report"
+subtitle: "an overview of the qualities and characterisitics of your sequencing data" 
+intro_text: >
+  this pipeline is designed to process and analyze bulk RNA-sequencing data, 
+  providing insights into the quality of your sequencing reads, the presence of any contaminants, 
+  and the overall characteristics of your dataset. this report summarizes the results from various 
+  quality control and analysis steps, including fastqc, cutadapt trimming, star alignment, picard 
+  metrics calculation, and rsem quantification (if selected). each section includes a brief description 
+  of what to look for in the results and how to interpret them. we recommend reviewing each section 
+  carefully to ensure that your data meets the necessary quality standards for downstream analyses.
 
 ## added regex for sample merging to account for different delimiters, captialization, and presence/absence of _001
 ## may or may not have to adjust for trimmed samples as well 
