@@ -1,7 +1,11 @@
+#### NOTE: ALL GLOBAL VARIABLES USED IN RULES ARE DEFINED IN THE SNAKEFILE, NOT IN THIS RULE FILE, SO THEY CAN BE REFERENCED THROUGHOUT THE WORKFLOW ####
+#### CHECK SNAKEFILE FOR DEFINITIONS OF ALL GLOBAL VARIABLES USED IN THIS RULE FILE (AND THE WORKFLOW IN GENERAL)                                    ####
+
+#### OPTIONAL: subworkflow to generate gene and isoform level expression estimates with RSEM if user desires ####
+
+#### GENERATE RSEM INDEX ####
 ## global variables within this rule: ALIGN_INDEX_NAME, REF_DIR, ANNOT_COL_NAME
-## wont want to run this rule unless its needed - config option/looking at star log files for %uniquely_mapped v %percent_multimapped v %unmapped thresholds for when its run
-## rsem genome index generation (probs will be moved to a subworkflow but its here for now) 
-## finally works using outside fasta/gtf files with above rule (yay!!)
+## wont want to run this rule unless its needed - user param option to run rsem if gene counts from star are not desired (default will be False)
 rule generate_rsem_index:
     input:
         fastaFile = NEW_FASTA_PATH,
@@ -12,10 +16,6 @@ rule generate_rsem_index:
         RSEM_SING
     conda:
         RSEM_CONDA
-    params:
-        rsem_index_name = ALIGN_INDEX_NAME,
-        ref_directory = REF_DIR,
-        genome_annot_col = ANNOT_COL_NAME ## gene_id should be the default!! only changed based on user input!
     shell:
         """
         if [ {ANNOT_COL_NAME} == "gene_id" ];
@@ -35,12 +35,10 @@ rule generate_rsem_index:
         """
 
 
+#### RUN RSEM QUANTIFICATION ####
 ## global variables within this rule: PROC_CMD, CORES, ALIGN_INDEX_NAME, EXTRA_RSEM_PARAMS
-## rsem 
 ## need to include the genome name prefix for the rsem index files or else it loses its mind
 ## have to also provide the file prefix with the output directory path (I forgot this)
-## need to test that the user specified strandedness actually works as desired!!!
-## look for rsem flag that can designate which column to pull 
 rule run_rsem_quantification:
     input:
         aligned_transcriptBam = pj(OUT_DIR_NAME, "star_alignment/{sample}/{sample}.Aligned.toTranscriptome.out.bam"),
@@ -55,11 +53,8 @@ rule run_rsem_quantification:
     log:
         software_log = pj(SOFTWARE_LOG_DIR, "{sample}.rsem.log")
     params:
-        n_cores = CORES,
         current_sample = lambda wc: wc.get("sample"),
-        user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample")), ## need to check that this will pull the wildcard appropriately
-        rsem_index_name = ALIGN_INDEX_NAME,
-        user_added_rsemParams = EXTRA_RSEM_PARAMS
+        user_strandedness = specified_strandedness(metadata_df=METADATA, sampleid=lambda wc: wc.get("sample"))
     shell:
         """ 
         isEmpty={params.user_strandedness}
