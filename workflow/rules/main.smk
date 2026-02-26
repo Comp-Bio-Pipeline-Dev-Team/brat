@@ -179,6 +179,7 @@ rule create_fastq_screen_config:
 #### BOWTIE2 INDICES FOR FASTQ SCREEN ####
 ## this is based on the genome names and links provided in the csv file specified by the user (FQSCREEN_FILE)
 ## had to remove carriage return characters from links
+## bowtie2 version isnt pulled correctly when pipeline is run with conda in alpine (due to perl being mad about the conda prefix including "@xsede.org")
 rule generate_fastq_screen_index:
     input:
         linkFile = FQSCREEN_FILE
@@ -207,7 +208,7 @@ rule generate_fastq_screen_index:
 
         ## pulling bowtie2 version
         ## im not using sed for this one bc it was a bit more complicated to pull the actual version off the first line
-        ( echo -n "bowtie2: "; printf "\"%s\"\n" "$(bowtie2 --version 2>&1 | head -n 1 | awk -F ' ' '{{print $NF}}')" ) > {log.software_log} 2>&1
+        ( echo -n "bowtie2: "; printf "\"%s\"\n" "$(bowtie2 --version 2>&1 | grep "version" | head -n 1 | awk -F ' ' '{{print $NF}}')" ) > {log.software_log} 2>&1
 
         ## make index output directory or else bowtie2 will fail 
         mkdir -p {output.index}
