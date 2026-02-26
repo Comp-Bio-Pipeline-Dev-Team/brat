@@ -10,14 +10,16 @@ fn_clean_sample_names: true
 
 disable_version_detection: true
 
+## use html syntax to add usable hyperlinks!
 report_header_info:
   - Analysis Run: "Bulk RNA-sequencing Analysis"
   - Contact Email: "madison.apgar@cuanschutz.edu"
   - Department: "Microbiology and Immunology"
-  - GitHub Repository: <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat">click here</a>
+  - GitHub Repository: <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat">located here</a>
 
-title: "brat (Bulk Rna-seq Analysis Tool) report"
-subtitle: "an overview of the qualities and characterisitics of your sequencing data" 
+title: "brat (Bulk RNA-seq Analysis Tool) report"
+## if i have something important to say, the subtitle would be nice but i cant think of anything that would add to the report
+#subtitle: "an overview of the qualities and characterisitics of your sequencing data" 
 intro_text: >
   this pipeline is designed to process and analyze bulk RNA-sequencing data, 
   providing insights into the quality of your sequencing reads, the presence of any contaminants, 
