@@ -258,6 +258,7 @@ rule run_fastq_screen:
 ## global variables within this rule: REF_DIR, NEW_FASTA_PATH, NEW_ANNOT_PATH, NEW_PICARD_REFFLAT, NEW_PICARD_RRNA_INTERVAL
 ## copy input fasta/gtf files into the working directory so bind points dont break
 ## symlinks for individual files didnt work bc symlink names are copied over but not the actual files (i.e. containers break the symlinks)
+## benefit of keeping copies in there: snakemake won't accidentally modify any input reference files (just the copy)
 rule copy_reference_files:
     input:
         fastaFile = ALIGN_FASTA,

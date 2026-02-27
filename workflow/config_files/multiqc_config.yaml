@@ -15,11 +15,12 @@ report_header_info:
   - Analysis Run: "Bulk RNA-sequencing Analysis"
   - Contact Email: "madison.apgar@cuanschutz.edu"
   - Department: "Microbiology and Immunology"
-  - GitHub Repository: <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat">located here</a>
+  - Docs: <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat/wiki">located here</a>  
 
 title: "brat (Bulk RNA-seq Analysis Tool) report"
-## if i have something important to say, the subtitle would be nice but i cant think of anything that would add to the report
-#subtitle: "an overview of the qualities and characterisitics of your sequencing data" 
+## bc of weirdness with the html hyperlink in the subtitle, its enclosed in single quotes 
+## (if not html thinks all text from the subtitle to the Docs hyperlink is one hyperlink)
+subtitle: 'detailed information about brat and its usage can be found in the associated <a href="https://github.com/Comp-Bio-Pipeline-Dev-Team/brat">GitHub repository</a>.'
 intro_text: >
   this pipeline is designed to process and analyze bulk RNA-sequencing data, 
   providing insights into the quality of your sequencing reads, the presence of any contaminants, 
@@ -94,15 +95,15 @@ section_comments:
     fastqc inFiles -o outDir --threads n_threads
     </code></pre>
   cutadapt: |
-    trimming of raw sequences  
+    trimming of raw sequences for adapter content and low-quality bases. 
 
     command used for cutadapt trimming:  
 
     <pre><code>
-    cutadapt -a adapter_threePrime \  
+    cutadapt -a adapter_threePrime \  ## default is illumina universal adapter - adjust as needed 
              -A adapter_threePrime \  
-             chemistryFlag \  ## either --nextseq-trim for Novaseq 2 color chemistry or -q for others
-             --minimum-length=minReadLen \  
+             chemistryFlag \  ## either --nextseq-trim for Novaseq 2 color chemistry or -q for others, default quality score is 30
+             --minimum-length=minReadLen \  ## default is 10 - adjust as needed 
              -j n_threads \  
              --pair-filter=any \  
              -o forwardTrimmed \  
