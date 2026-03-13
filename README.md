@@ -12,6 +12,8 @@ An automated pipeline for bulk RNA sequencing analyses with known genomes (e.g. 
 - [FAQs and Troubleshooting](https://github.com/Comp-Bio-Pipeline-Dev-Team/brat/wiki/FAQs-and-Troubleshooting)
 - [brat Wiki Home](https://github.com/Comp-Bio-Pipeline-Dev-Team/brat/wiki)
 
+## Workflow overview
+
 ![](brat_workflow_diagram.png)
 
 ## Getting started 
